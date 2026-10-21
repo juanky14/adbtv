@@ -7,6 +7,6 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/juanky14/adbtv/issues",
   "requirements": [],
-  "version": "1.0.0",
+  "version": "1.5.0",
   "zeroconf": ["_adbtv._tcp.local."]
 }
