@@ -1,0 +1,12 @@
+{
+  "domain": "adbtv",
+  "name": "ADB TV",
+  "codeowners": ["@juanky14"],
+  "config_flow": true,
+  "documentation": "https://github.com/juanky14/adbtv",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/juanky14/adbtv/issues",
+  "requirements": [],
+  "version": "1.0.0",
+  "zeroconf": ["_adbtv._tcp.local."]
+}

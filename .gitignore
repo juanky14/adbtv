@@ -1,0 +1,11 @@
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+# El APK compilado se publica como Release, no en el repositorio
+*.apk
+__pycache__/
+.DS_Store
+.claude/
+.kotlin/

@@ -1,0 +1,8 @@
+<resources>
+    <color name="icon_bg">#0F2A1D</color>
+    <color name="accent">#3DDC84</color>
+    <color name="bg">#101418</color>
+    <color name="card">#1B2229</color>
+    <color name="text">#E6EDF3</color>
+    <color name="muted">#8B98A5</color>
+</resources>

@@ -1,0 +1,67 @@
+launch_app:
+  target:
+    entity:
+      integration: adbtv
+      domain: media_player
+  fields:
+    app:
+      required: true
+      example: "netflix"
+      selector:
+        text:
+
+send_key:
+  target:
+    entity:
+      integration: adbtv
+      domain: media_player
+  fields:
+    key:
+      required: true
+      example: "HOME"
+      selector:
+        select:
+          custom_value: true
+          options:
+            - HOME
+            - BACK
+            - DPAD_UP
+            - DPAD_DOWN
+            - DPAD_LEFT
+            - DPAD_RIGHT
+            - DPAD_CENTER
+            - VOLUME_UP
+            - VOLUME_DOWN
+            - VOLUME_MUTE
+            - MEDIA_PLAY_PAUSE
+            - MEDIA_STOP
+            - MEDIA_NEXT
+            - MEDIA_PREVIOUS
+            - SETTINGS
+            - SLEEP
+    times:
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 50
+
+shell:
+  target:
+    entity:
+      integration: adbtv
+      domain: media_player
+  fields:
+    command:
+      required: true
+      example: "getprop ro.product.model"
+      selector:
+        text:
+          multiline: true
+    timeout:
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 600
+          unit_of_measurement: s

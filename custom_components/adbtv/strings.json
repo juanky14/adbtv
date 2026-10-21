@@ -1,0 +1,72 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "ADB TV",
+        "description": "Abre la app ADB TV Server en el televisor: muestra su IP y el PIN.",
+        "data": {
+          "host": "IP del televisor",
+          "port": "Puerto",
+          "pin": "PIN"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Televisor encontrado",
+        "description": "Se ha encontrado **{name}** en {host}. Introduce el PIN que muestra la app ADB TV Server en el televisor.",
+        "data": { "pin": "PIN" }
+      },
+      "reauth_confirm": {
+        "title": "PIN cambiado",
+        "description": "El PIN de **{name}** ha cambiado. Introduce el nuevo PIN que muestra el televisor.",
+        "data": { "pin": "PIN" }
+      }
+    },
+    "error": {
+      "cannot_connect": "No se puede conectar. Comprueba que el televisor está encendido y la app abierta.",
+      "invalid_auth": "PIN incorrecto."
+    },
+    "abort": {
+      "already_configured": "Este televisor ya está configurado.",
+      "reauth_successful": "PIN actualizado.",
+      "not_supported": "Dispositivo no compatible."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Apps favoritas",
+        "description": "Cada app elegida se crea como interruptor: encender abre la app y apagar vuelve al inicio. Así puedes usarlas con Alexa o Google (\"Alexa, enciende Netflix\").",
+        "data": { "favorites": "Apps favoritas" }
+      }
+    },
+    "abort": {
+      "tv_offline": "El televisor está apagado o no responde. Enciéndelo e inténtalo de nuevo."
+    }
+  },
+  "services": {
+    "launch_app": {
+      "name": "Abrir app",
+      "description": "Abre una app en el televisor por su nombre o su paquete.",
+      "fields": {
+        "app": { "name": "App", "description": "Nombre (\"netflix\", \"prime video\") o paquete (\"com.netflix.ninja\")." }
+      }
+    },
+    "send_key": {
+      "name": "Pulsar tecla",
+      "description": "Simula una tecla del mando a distancia.",
+      "fields": {
+        "key": { "name": "Tecla", "description": "Código de tecla de Android sin el prefijo KEYCODE_." },
+        "times": { "name": "Veces", "description": "Número de pulsaciones." }
+      }
+    },
+    "shell": {
+      "name": "Comando shell",
+      "description": "Ejecuta un comando shell en el televisor (como adb shell) y devuelve su salida.",
+      "fields": {
+        "command": { "name": "Comando", "description": "Comando a ejecutar." },
+        "timeout": { "name": "Tiempo máximo", "description": "Segundos antes de cancelar el comando." }
+      }
+    }
+  }
+}

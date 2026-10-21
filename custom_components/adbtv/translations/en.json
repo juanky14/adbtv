@@ -1,0 +1,72 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "ADB TV",
+        "description": "Open the ADB TV Server app on the TV: it shows its IP address and PIN.",
+        "data": {
+          "host": "TV IP address",
+          "port": "Port",
+          "pin": "PIN"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "TV found",
+        "description": "Found **{name}** at {host}. Enter the PIN shown by the ADB TV Server app on the TV.",
+        "data": { "pin": "PIN" }
+      },
+      "reauth_confirm": {
+        "title": "PIN changed",
+        "description": "The PIN for **{name}** has changed. Enter the new PIN shown on the TV.",
+        "data": { "pin": "PIN" }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect. Make sure the TV is on and the app is running.",
+      "invalid_auth": "Wrong PIN."
+    },
+    "abort": {
+      "already_configured": "This TV is already configured.",
+      "reauth_successful": "PIN updated.",
+      "not_supported": "Unsupported device."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Favorite apps",
+        "description": "Each selected app becomes a switch: turning it on opens the app, turning it off goes back home. Use them with Alexa or Google (\"Alexa, turn on Netflix\").",
+        "data": { "favorites": "Favorite apps" }
+      }
+    },
+    "abort": {
+      "tv_offline": "The TV is off or not responding. Turn it on and try again."
+    }
+  },
+  "services": {
+    "launch_app": {
+      "name": "Launch app",
+      "description": "Opens an app on the TV by name or package.",
+      "fields": {
+        "app": { "name": "App", "description": "Name (\"netflix\", \"prime video\") or package (\"com.netflix.ninja\")." }
+      }
+    },
+    "send_key": {
+      "name": "Send key",
+      "description": "Simulates a remote control key.",
+      "fields": {
+        "key": { "name": "Key", "description": "Android key code without the KEYCODE_ prefix." },
+        "times": { "name": "Times", "description": "Number of presses." }
+      }
+    },
+    "shell": {
+      "name": "Shell command",
+      "description": "Runs a shell command on the TV (like adb shell) and returns its output.",
+      "fields": {
+        "command": { "name": "Command", "description": "Command to run." },
+        "timeout": { "name": "Timeout", "description": "Seconds before the command is cancelled." }
+      }
+    }
+  }
+}

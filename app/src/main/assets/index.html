@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADB TV Terminal</title>
+<style>
+  :root { --bg:#101418; --card:#1b2229; --line:#2a333c; --text:#e6edf3; --muted:#8b98a5; --accent:#3ddc84; --err:#ff7b72; --warn:#e3b341; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.4 system-ui, sans-serif; }
+  header { padding:12px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-bottom:1px solid var(--line); }
+  header h1 { margin:0; font-size:18px; color:var(--accent); }
+  #status { color:var(--muted); font-size:13px; flex:1; }
+  nav { display:flex; gap:4px; }
+  nav button { background:transparent; color:var(--muted); border:1px solid var(--line); }
+  nav button.on { background:var(--card); color:var(--text); border-color:var(--accent); }
+  main { max-width:1100px; margin:0 auto; padding:16px; }
+  #out { background:#0b0e11; border-radius:10px; padding:12px; height:60vh; overflow:auto; white-space:pre-wrap;
+         word-break:break-all; font:13px/1.45 ui-monospace, Consolas, monospace; }
+  .cmd { color:var(--accent); } .err { color:var(--err); } .meta { color:var(--muted); }
+  form { display:flex; gap:8px; margin-top:10px; }
+  input[type=text], input[type=password], input[type=search], select { min-width:0; background:var(--card); color:var(--text);
+         border:1px solid var(--line); border-radius:8px; padding:10px; font:14px ui-monospace, Consolas, monospace; }
+  form input { flex:1; }
+  button { background:var(--accent); color:#06210f; border:0; border-radius:8px; padding:10px 14px; font-weight:600; cursor:pointer; }
+  button.sec { background:#2a333c; color:var(--text); font-weight:500; }
+  button.danger { background:#4a1f1f; color:#ffd7d3; font-weight:500; }
+  button:disabled { opacity:.5; cursor:default; }
+  .quick { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .quick button, .acts button { padding:6px 10px; font-size:13px; }
+  #login { max-width:360px; margin:15vh auto; background:var(--card); padding:24px; border-radius:12px; }
+  #login p { color:var(--muted); }
+  .hidden { display:none !important; }
+
+  /* Apps */
+  #drop { border:2px dashed var(--line); border-radius:12px; padding:16px; text-align:center; color:var(--muted); }
+  #drop.over { border-color:var(--accent); color:var(--text); }
+  #drop .row { justify-content:center; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+  .toolbar { display:flex; gap:8px; margin:16px 0 8px; flex-wrap:wrap; }
+  .toolbar input { flex:1; min-width:180px; }
+  #count { color:var(--muted); font-size:13px; margin-bottom:6px; }
+  .app { display:flex; gap:12px; align-items:center; padding:10px; border-bottom:1px solid var(--line); }
+  .app img { width:40px; height:40px; border-radius:8px; background:var(--card); flex:none; }
+  .app .info { flex:1; min-width:0; }
+  .app .name { font-weight:600; }
+  .app .pkg { color:var(--muted); font:12px ui-monospace, Consolas, monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tag { display:inline-block; font-size:11px; padding:1px 6px; border-radius:6px; margin-left:6px; background:var(--line); color:var(--muted); font-weight:500; }
+  .tag.warn { background:#3d3112; color:var(--warn); } .tag.off { background:#4a1f1f; color:#ffd7d3; }
+  .acts { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+  .app.removed { opacity:.6; }
+  #toast { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:var(--card); border:1px solid var(--line);
+           padding:10px 16px; border-radius:10px; max-width:90vw; white-space:pre-wrap; font:13px ui-monospace, Consolas, monospace; }
+
+  /* Archivos */
+  .places { display:flex; gap:6px; flex-wrap:wrap; }
+  .places button { padding:6px 10px; font-size:13px; }
+  .crumbs { display:flex; gap:2px; flex-wrap:wrap; align-items:center; margin:12px 0 8px; font:13px ui-monospace, Consolas, monospace; }
+  .crumbs a { color:var(--accent); cursor:pointer; padding:2px 4px; border-radius:4px; }
+  .crumbs a:hover { background:var(--card); }
+  .ftools { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+  .ftools button { padding:6px 10px; font-size:13px; }
+  #clip { color:var(--warn); font-size:13px; }
+  #fdrop { border:2px dashed transparent; border-radius:10px; min-height:200px; }
+  #fdrop.over { border-color:var(--accent); }
+  table.files { width:100%; border-collapse:collapse; }
+  .files td { padding:7px 6px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  .files tr:hover td { background:#151b21; }
+  .files tr.sel td { background:#16301f; }
+  .files .nm { cursor:pointer; word-break:break-all; }
+  .files .nm:hover { color:var(--accent); }
+  .files .num { color:var(--muted); font-size:12px; white-space:nowrap; text-align:right; }
+  .files .ic { width:28px; text-align:center; }
+  .files .fa { text-align:right; white-space:nowrap; }
+  .files .fa button { padding:4px 8px; font-size:12px; margin-left:2px; }
+  .progress { height:6px; background:var(--line); border-radius:3px; overflow:hidden; margin:6px 0; }
+  .progress div { height:100%; background:var(--accent); width:0; transition:width .2s; }
+  #modal { position:fixed; inset:0; background:rgba(0,0,0,.75); display:flex; align-items:center; justify-content:center; z-index:10; padding:16px; }
+  #modal .box { background:var(--card); border-radius:12px; padding:12px; max-width:95vw; max-height:92vh; display:flex; flex-direction:column; gap:8px; min-width:280px; }
+  #modal .bar { display:flex; gap:8px; align-items:center; }
+  #modal .bar b { flex:1; word-break:break-all; font-size:14px; }
+  #modal .content { overflow:auto; }
+  #modal pre { margin:0; white-space:pre-wrap; word-break:break-all; font:12px/1.4 ui-monospace, Consolas, monospace; }
+  #modal img, #modal video { max-width:90vw; max-height:80vh; display:block; }
+  @media (max-width:640px) { .files .hide-sm { display:none; } }
+  @media (max-width:640px) { .app { flex-wrap:wrap; } .acts { width:100%; justify-content:flex-start; } }
+</style>
+</head>
+<body>
+<div id="login">
+  <h1 style="color:var(--accent);margin-top:0">ADB TV Terminal</h1>
+  <p>Introduce el PIN que se muestra en la pantalla del TV.</p>
+  <form id="loginForm"><input id="pin" type="password" inputmode="numeric" placeholder="PIN" autofocus><button>Entrar</button></form>
+  <p id="loginErr" class="err"></p>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <h1>ADB TV</h1>
+    <nav><button class="on" data-tab="term">Terminal</button><button data-tab="apps">Apps</button><button data-tab="files">Archivos</button></nav>
+    <span id="status"></span>
+  </header>
+
+  <main id="tab-term">
+    <div id="out"></div>
+    <form id="cmdForm">
+      <input id="cmd" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="comando shell, p. ej. pm list packages">
+      <button id="runBtn">Ejecutar</button>
+    </form>
+    <div class="quick" id="quick"></div>
+    <div class="row"><button class="sec" id="clearBtn">Limpiar</button></div>
+  </main>
+
+  <main id="tab-apps" class="hidden">
+    <div id="drop">
+      <div>Arrastra aquí un <b>.apk</b>, un paquete <b>.apks / .xapk</b>, o varios .apk de una misma app dividida</div>
+      <div class="row">
+        <input id="apk" type="file" accept=".apk,.apks,.xapk,.zip" multiple>
+        <label><input type="checkbox" id="downgrade"> Permitir versión anterior</label>
+        <button id="installBtn">Instalar</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Buscar por nombre o paquete">
+      <select id="filter">
+        <option value="user">Instaladas por el usuario</option>
+        <option value="system">De sistema</option>
+        <option value="disabled">Desactivadas</option>
+        <option value="removed">Quitadas (restaurables)</option>
+        <option value="all">Todas</option>
+      </select>
+      <button class="sec" id="reloadBtn">Recargar</button>
+    </div>
+    <div id="count"></div>
+    <div id="list"></div>
+  </main>
+
+  <main id="tab-files" class="hidden">
+    <div class="places" id="places"></div>
+    <div class="crumbs" id="crumbs"></div>
+    <div class="ftools">
+      <button class="sec" id="fUp" title="Carpeta superior (Retroceso)">⬆ Subir nivel</button>
+      <button class="sec" id="fReload">Recargar</button>
+      <button class="sec" id="fMkdir">Nueva carpeta</button>
+      <button id="fUploadBtn">Subir archivos</button>
+      <input id="fUpload" type="file" multiple class="hidden">
+      <span style="width:12px"></span>
+      <button class="sec" id="fCopy" disabled>Copiar</button>
+      <button class="sec" id="fCut" disabled>Cortar</button>
+      <button class="sec" id="fPaste" disabled>Pegar</button>
+      <button class="danger" id="fDel" disabled>Eliminar</button>
+      <span id="clip"></span>
+    </div>
+    <div id="fdrop">
+      <table class="files"><tbody id="flist"></tbody></table>
+      <div id="fmsg" class="meta" style="padding:12px"></div>
+    </div>
+  </main>
+</div>
+<div id="fprog" class="hidden" style="position:fixed;left:16px;right:16px;bottom:64px;background:var(--card);padding:10px;border-radius:10px;border:1px solid var(--line)"><div class="meta" id="fprogTxt"></div><div class="progress"><div id="fprogBar"></div></div></div>
+<div id="toast" class="hidden"></div>
+<div id="modal" class="hidden"><div class="box"><div class="bar"><b id="mTitle"></b><button class="sec" id="mDl">Descargar</button><button class="sec" id="mClose">Cerrar</button></div><div class="content" id="mBody"></div></div></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let token = sessionStorage.getItem('pin') || '';
+const hist = []; let hIdx = 0;
+let apps = [];
+let busy = Promise.resolve();   // serializa los comandos para que las salidas no se mezclen
+
+const QUICK = {
+  'Info': 'getprop ro.product.model; getprop ro.build.version.release; id',
+  'Memoria': 'cat /proc/meminfo | head -5',
+  'Disco': 'df -h /data',
+  'Logcat': 'logcat -d -t 100',
+  'Captura': 'screencap -p /sdcard/screen.png && echo Guardada en /sdcard/screen.png',
+  'Inicio': 'input keyevent KEYCODE_HOME',
+  'Atrás': 'input keyevent KEYCODE_BACK',
+  'Reiniciar': 'reboot'
+};
+
+function print(text, cls) {
+  const s = document.createElement('span');
+  if (cls) s.className = cls;
+  s.textContent = text;
+  $('out').appendChild(s);
+  $('out').scrollTop = $('out').scrollHeight;
+}
+
+let toastTimer;
+function toast(msg, ms = 4000) {
+  $('toast').textContent = msg; $('toast').classList.remove('hidden');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.add('hidden'), ms);
+}
+
+async function api(path, body) {
+  const r = await fetch(path, { method: body ? 'POST' : 'GET', headers: { 'X-Token': token }, body });
+  const j = await r.json().catch(() => ({ error: 'Respuesta no válida' }));
+  if (!r.ok) throw Object.assign(new Error(j.error || r.status), { status: r.status });
+  return j;
+}
+
+async function refreshStatus() {
+  const s = await api('/api/status');
+  $('status').textContent = `${s.model} · Android ${s.android} · ${s.ip} · ` +
+    (s.adbConnected ? 'ADB conectado (shell)' : s.adbPortOpen ? 'ADB activo, no conectado' : 'sin ADB (permisos de app)');
+  return s;
+}
+
+async function login(pin) {
+  token = pin;
+  try {
+    await refreshStatus();
+    sessionStorage.setItem('pin', pin);
+    $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+    $('cmd').focus();
+    print('Conectado. Los comandos se ejecutan en el TV.\n', 'meta');
+    setInterval(() => refreshStatus().catch(() => {}), 10000);
+  } catch (e) {
+    $('login').classList.remove('hidden'); $('app').classList.add('hidden');
+    $('loginErr').textContent = e.message;
+    sessionStorage.removeItem('pin');
+  }
+}
+
+function run(cmd) {
+  if (!cmd) return;
+  hist.push(cmd); hIdx = hist.length;
+  busy = busy.then(async () => {
+    print(`$ ${cmd}\n`, 'cmd');
+    try {
+      const r = await api('/api/exec', new URLSearchParams({ cmd }));
+      print(r.output || '');
+      print(`[exit ${r.exit} · vía ${r.via}]\n`, r.exit === 0 ? 'meta' : 'err');
+    } catch (e) {
+      print(`Error: ${e.message}\n`, 'err');
+      if (e.status === 401) location.reload();
+    }
+  });
+}
+
+/* ---------- Apps ---------- */
+const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
+
+async function loadApps() {
+  $('count').textContent = 'Cargando…';
+  try { apps = await api('/api/apps'); renderApps(); }
+  catch (e) { $('count').textContent = 'Error: ' + e.message; }
+}
+
+function renderApps() {
+  const q = $('search').value.trim().toLowerCase();
+  const f = $('filter').value;
+  const shown = apps.filter(a => {
+    if (q && !a.label.toLowerCase().includes(q) && !a.pkg.toLowerCase().includes(q)) return false;
+    if (f === 'user') return a.installed && !a.system;
+    if (f === 'system') return a.installed && a.system;
+    if (f === 'disabled') return a.installed && !a.enabled;
+    if (f === 'removed') return !a.installed;
+    return true;
+  });
+  $('count').textContent = `${shown.length} apps`;
+  const list = $('list'); list.textContent = '';
+  for (const a of shown) list.appendChild(appRow(a));
+}
+
+function appRow(a) {
+  const row = document.createElement('div');
+  row.className = 'app' + (a.installed ? '' : ' removed');
+  const img = document.createElement('img');
+  img.loading = 'lazy'; img.alt = '';
+  img.src = `/api/icon?pkg=${encodeURIComponent(a.pkg)}&t=${encodeURIComponent(token)}`;
+  img.onerror = () => { img.style.visibility = 'hidden'; };
+  const info = document.createElement('div'); info.className = 'info';
+  const name = document.createElement('div'); name.className = 'name'; name.textContent = a.label;
+  const tags = [];
+  if (a.self) tags.push(['esta app', '']);
+  if (a.system) tags.push([a.updated ? 'sistema (actualizada)' : 'sistema', '']);
+  if (a.critical) tags.push(['crítica', 'warn']);
+  if (!a.installed) tags.push(['quitada', 'off']);
+  else if (!a.enabled) tags.push(['desactivada', 'off']);
+  for (const [t, c] of tags) { const s = document.createElement('span'); s.className = 'tag ' + c; s.textContent = t; name.appendChild(s); }
+  const pkg = document.createElement('div'); pkg.className = 'pkg';
+  pkg.textContent = `${a.pkg} · ${a.version || '?'} · ${fmtSize(a.size)}`;
+  info.append(name, pkg);
+
+  const acts = document.createElement('div'); acts.className = 'acts';
+  const btn = (label, cls, fn) => { const b = document.createElement('button'); b.className = cls; b.textContent = label; b.onclick = () => fn(b); acts.appendChild(b); };
+  if (!a.installed) {
+    btn('Restaurar', '', b => doAction(a, 'restore', b));
+  } else {
+    if (a.launchable && a.enabled) btn('Abrir', 'sec', b => doAction(a, 'launch', b));
+    if (!a.self) btn('Detener', 'sec', b => doAction(a, 'stop', b));
+    btn('APK', 'sec', () => { location.href = `/api/apk?pkg=${encodeURIComponent(a.pkg)}&t=${encodeURIComponent(token)}`; });
+    if (!a.self) {
+      btn(a.enabled ? 'Desactivar' : 'Activar', 'sec', b => doAction(a, a.enabled ? 'disable' : 'enable', b));
+      btn('Borrar datos', 'danger', b => doAction(a, 'clear', b));
+      btn('Desinstalar', 'danger', b => doAction(a, 'uninstall', b));
+    }
+  }
+  row.append(img, info, acts);
+  return row;
+}
+
+const CONFIRM = {
+  uninstall: a => a.system
+    ? `¿Quitar "${a.label}"?\nEs de sistema: se ocultará para tu usuario y podrás restaurarla desde el filtro "Quitadas".`
+    : `¿Desinstalar "${a.label}"?\nSe borrarán la app y sus datos.`,
+  clear: a => `¿Borrar todos los datos de "${a.label}"?\nPerderás sesiones, ajustes y descargas de esa app.`,
+  disable: a => `¿Desactivar "${a.label}"?`,
+};
+
+async function doAction(a, action, button) {
+  if (CONFIRM[action] && !confirm(CONFIRM[action](a))) return;
+  let force = '0';
+  if (a.critical && ['uninstall', 'disable', 'clear'].includes(action)) {
+    if (!confirm(`⚠️ "${a.label}" es CRÍTICA para el sistema.\nPuede dejar el TV sin imagen, sin entradas HDMI o sin arrancar.\n\n¿Seguro que quieres continuar?`)) return;
+    force = '1';
+  }
+  button.disabled = true;
+  try {
+    const r = await api('/api/app', new URLSearchParams({ pkg: a.pkg, action, force }));
+    toast(r.output.trim() + (r.exit === 0 ? '' : `\n[exit ${r.exit}]`));
+    if (r.exit === 0 && action !== 'launch' && action !== 'stop') await loadApps();
+  } catch (e) { toast('Error: ' + e.message); }
+  button.disabled = false;
+}
+
+async function install(files) {
+  files = [...files].filter(f => /\.(apk|apks|xapk|zip)$/i.test(f.name));
+  if (!files.length) return toast("Selecciona un .apk, .apks o .xapk");
+  const fd = new FormData();
+  files.forEach((f, i) => fd.append('apk' + String(i).padStart(3, '0'), f));
+  if ($('downgrade').checked) fd.append('downgrade', '1');
+  xhrUpload('/api/install', fd, `Instalando ${files.map(f => f.name).join(', ')}…`, async r => {
+    toast(r.output.trim(), 8000);
+    $('apk').value = '';
+    await loadApps();
+  });
+}
+
+/* ---------- Archivos ---------- */
+let cwd = '/sdcard', fentries = [], fsel = new Set(), clip = null;
+const TEXT_EXT = /\.(txt|log|md|json|xml|html?|css|js|sh|prop|conf|cfg|ini|csv|srt|vtt|yml|yaml|kt|java|py)$/i;
+const IMG_EXT = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
+const VID_EXT = /\.(mp4|webm|mkv|mov|m4v)$/i;
+const AUD_EXT = /\.(mp3|ogg|wav|m4a|flac|aac|opus)$/i;
+const join = (a, b) => (a === '/' ? '' : a) + '/' + b;
+const fileUrl = (p, inline) => `/api/fs/get?path=${encodeURIComponent(p)}&t=${encodeURIComponent(token)}${inline ? '&inline=1' : ''}`;
+const fdate = s => s ? new Date(s * 1000).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }) : '';
+function ficon(e) {
+  if (e.dir) return e.link ? '🔗' : '📁';
+  const n = e.name.toLowerCase();
+  if (n.endsWith('.apk')) return '📦';
+  if (IMG_EXT.test(n)) return '🖼️';
+  if (VID_EXT.test(n)) return '🎬';
+  if (AUD_EXT.test(n)) return '🎵';
+  if (/\.(zip|rar|7z|tar|gz|xz)$/.test(n)) return '🗜️';
+  if (TEXT_EXT.test(n)) return '📄';
+  return '📃';
+}
+
+async function fsOp(op, params) {
+  const r = await api('/api/fs/op', new URLSearchParams({ op, ...params }));
+  if (r.exit !== 0) throw new Error(r.output.trim() || `exit ${r.exit}`);
+  return r;
+}
+
+async function loadPlaces() {
+  try {
+    const pl = await api('/api/fs/places');
+    const box = $('places'); box.textContent = '';
+    for (const p of pl) {
+      const b = document.createElement('button');
+      b.className = 'sec'; b.textContent = p.name; b.onclick = () => openDir(p.path);
+      box.appendChild(b);
+    }
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+async function openDir(path) {
+  $('fmsg').textContent = 'Cargando…';
+  try {
+    const r = await api('/api/fs/list?path=' + encodeURIComponent(path));
+    cwd = r.path; fentries = r.entries; fsel.clear();
+    try { localStorage.setItem('cwd', cwd); } catch (_) {}
+    renderFiles();
+  } catch (e) { $('fmsg').textContent = 'Error: ' + e.message; }
+}
+
+function renderCrumbs() {
+  const c = $('crumbs'); c.textContent = '';
+  const parts = cwd.split('/').filter(Boolean);
+  const add = (label, path) => { const a = document.createElement('a'); a.textContent = label; a.onclick = () => openDir(path); c.appendChild(a); };
+  add('/', '/');
+  parts.forEach((p, i) => { add(p, '/' + parts.slice(0, i + 1).join('/')); if (i < parts.length - 1) c.append('/'); });
+}
+
+function renderFiles() {
+  renderCrumbs();
+  const tb = $('flist'); tb.textContent = '';
+  for (const e of fentries) {
+    const full = join(cwd, e.name);
+    const tr = document.createElement('tr');
+    if (fsel.has(full)) tr.className = 'sel';
+    const td = (cls, content) => { const d = document.createElement('td'); if (cls) d.className = cls; if (content !== undefined) d.append(content); tr.appendChild(d); return d; };
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = fsel.has(full);
+    cb.onchange = () => { cb.checked ? fsel.add(full) : fsel.delete(full); tr.className = cb.checked ? 'sel' : ''; updateTools(); };
+    td('', cb);
+    td('ic', ficon(e));
+    const nm = td('nm', e.name + (e.link ? ' →' : ''));
+    nm.onclick = () => e.dir ? openDir(full) : preview(e, full);
+    td('num hide-sm', e.dir ? '' : fmtSize(e.size));
+    td('num hide-sm', fdate(e.mtime));
+    const fa = td('fa');
+    const btn = (label, cls, title, fn) => { const b = document.createElement('button'); b.className = cls; b.textContent = label; b.title = title; b.onclick = fn; fa.appendChild(b); };
+    if (e.name.toLowerCase().endsWith('.apk')) btn('Instalar', '', 'Instalar este APK', () => installRemote(full));
+    if (!e.dir) btn('⬇', 'sec', 'Descargar', () => { location.href = fileUrl(full); });
+    btn('✎', 'sec', 'Renombrar', () => renameEntry(e, full));
+    btn('🗑', 'danger', 'Eliminar', () => deletePaths([full]));
+    tb.appendChild(tr);
+  }
+  const nd = fentries.filter(e => e.dir).length;
+  $('fmsg').textContent = fentries.length ? `${nd} carpetas · ${fentries.length - nd} archivos` : 'Carpeta vacía (o sin permiso de lectura)';
+  updateTools();
+}
+
+function updateTools() {
+  const n = fsel.size;
+  $('fCopy').disabled = $('fCut').disabled = $('fDel').disabled = n === 0;
+  $('fDel').textContent = n ? `Eliminar (${n})` : 'Eliminar';
+  $('fPaste').disabled = !clip;
+  $('clip').textContent = clip ? `${clip.op === 'copy' ? 'Copiando' : 'Moviendo'} ${clip.paths.length} elemento(s): abre la carpeta destino y pulsa Pegar` : '';
+}
+
+async function preview(e, full) {
+  const n = e.name.toLowerCase();
+  const body = $('mBody'); body.textContent = '';
+  $('mTitle').textContent = full;
+  $('mDl').onclick = () => { location.href = fileUrl(full); };
+  if (IMG_EXT.test(n)) { const i = document.createElement('img'); i.src = fileUrl(full, true); body.appendChild(i); }
+  else if (VID_EXT.test(n)) { const v = document.createElement('video'); v.controls = true; v.autoplay = true; v.src = fileUrl(full, true); body.appendChild(v); }
+  else if (AUD_EXT.test(n)) { const a = document.createElement('audio'); a.controls = true; a.autoplay = true; a.src = fileUrl(full, true); body.appendChild(a); }
+  else if (TEXT_EXT.test(n) || e.size < 64 * 1024) {
+    const pre = document.createElement('pre'); pre.textContent = 'Cargando…'; body.appendChild(pre);
+    try {
+      const r = await fsOp('read', { path: full });
+      pre.textContent = r.output + (e.size > 262144 ? '\n… (mostrando los primeros 256 KB)' : '');
+    } catch (err) { pre.textContent = 'Error: ' + err.message; }
+  } else { location.href = fileUrl(full); return; }
+  $('modal').classList.remove('hidden');
+}
+function closeModal() { $('modal').classList.add('hidden'); $('mBody').textContent = ''; }
+
+async function renameEntry(e, full) {
+  const name = prompt('Nuevo nombre:', e.name);
+  if (!name || name === e.name) return;
+  try { await fsOp('rename', { path: full, name }); openDir(cwd); } catch (err) { toast('Error: ' + err.message); }
+}
+
+async function deletePaths(paths) {
+  const list = paths.map(p => p.split('/').pop()).join('\n');
+  if (!confirm(`¿Eliminar definitivamente ${paths.length} elemento(s)?\n\n${list}\n\nLas carpetas se borran con todo su contenido.`)) return;
+  try { await fsOp('delete', { paths: paths.join('\n') }); toast('Eliminado'); openDir(cwd); } catch (err) { toast('Error: ' + err.message); }
+}
+
+async function installRemote(full) {
+  if (!confirm(`¿Instalar ${full.split('/').pop()}?`)) return;
+  toast('Instalando…', 600000);
+  try { const r = await fsOp('install', { path: full }); toast(r.output.trim()); apps = []; }
+  catch (err) { toast('Error: ' + err.message, 8000); }
+}
+
+function xhrUpload(url, fd, label, onDone) {
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', url); xhr.setRequestHeader('X-Token', token);
+  $('fprog').classList.remove('hidden'); $('fprogTxt').textContent = label; $('fprogBar').style.width = '0';
+  xhr.upload.onprogress = ev => {
+    if (!ev.lengthComputable) return;
+    const pct = ev.loaded / ev.total * 100;
+    $('fprogBar').style.width = pct + '%';
+    $('fprogTxt').textContent = `${label} ${pct.toFixed(0)}% (${fmtSize(ev.loaded)} / ${fmtSize(ev.total)})` + (pct >= 100 ? ' · procesando en el TV…' : '');
+  };
+  xhr.onload = () => {
+    $('fprog').classList.add('hidden');
+    let j = {}; try { j = JSON.parse(xhr.responseText); } catch (_) {}
+    xhr.status === 200 ? onDone(j) : toast('Error: ' + (j.error || xhr.status), 8000);
+  };
+  xhr.onerror = () => { $('fprog').classList.add('hidden'); toast('Error de red durante la subida', 8000); };
+  xhr.send(fd);
+}
+
+function uploadFiles(files) {
+  files = [...files];
+  if (!files.length) return;
+  const fd = new FormData();
+  fd.append('dir', cwd);
+  files.forEach((f, i) => {
+    const n = String(i).padStart(3, '0');
+    fd.append('name' + n, encodeURIComponent(f.name));   // nombre real (apóstrofos, ñ…)
+    fd.append('file' + n, f, f.name);
+  });
+  xhrUpload('/api/fs/upload', fd, `Subiendo ${files.length} archivo(s) a ${cwd}…`, r => { toast(r.output.trim()); $('fUpload').value = ''; openDir(cwd); });
+}
+
+$('fUp').onclick = () => openDir(cwd.replace(/\/[^/]*$/, '') || '/');
+$('fReload').onclick = () => openDir(cwd);
+$('fMkdir').onclick = async () => {
+  const name = prompt('Nombre de la carpeta nueva:');
+  if (!name) return;
+  try { await fsOp('mkdir', { path: join(cwd, name) }); openDir(cwd); } catch (err) { toast('Error: ' + err.message); }
+};
+$('fUploadBtn').onclick = () => $('fUpload').click();
+$('fUpload').onchange = () => uploadFiles($('fUpload').files);
+$('fCopy').onclick = () => { clip = { op: 'copy', paths: [...fsel] }; updateTools(); };
+$('fCut').onclick = () => { clip = { op: 'move', paths: [...fsel] }; updateTools(); };
+$('fPaste').onclick = async () => {
+  if (!clip) return;
+  toast(`${clip.op === 'copy' ? 'Copiando' : 'Moviendo'}…`, 600000);
+  try { await fsOp(clip.op, { paths: clip.paths.join('\n'), dest: cwd }); toast('Hecho'); clip = null; openDir(cwd); }
+  catch (err) { toast('Error: ' + err.message, 8000); }
+};
+$('fDel').onclick = () => deletePaths([...fsel]);
+$('mClose').onclick = closeModal;
+$('modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
+const fdrop = $('fdrop');
+fdrop.ondragover = e => { e.preventDefault(); fdrop.classList.add('over'); };
+fdrop.ondragleave = () => fdrop.classList.remove('over');
+fdrop.ondrop = e => { e.preventDefault(); fdrop.classList.remove('over'); uploadFiles(e.dataTransfer.files); };
+document.addEventListener('keydown', e => {
+  if ($('tab-files').classList.contains('hidden')) return;
+  if (e.key === 'Escape') closeModal();
+  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  if (e.key === 'Backspace' && !typing && $('modal').classList.contains('hidden')) { e.preventDefault(); $('fUp').click(); }
+});
+
+/* ---------- Eventos ---------- */
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  for (const t of ['term', 'apps', 'files']) $('tab-' + t).classList.toggle('hidden', b.dataset.tab !== t);
+  if (b.dataset.tab === 'apps' && !apps.length) loadApps();
+  if (b.dataset.tab === 'files' && !fentries.length) {
+    loadPlaces();
+    let c = '/sdcard'; try { c = localStorage.getItem('cwd') || c; } catch (_) {}
+    openDir(c);
+  }
+});
+$('loginForm').onsubmit = e => { e.preventDefault(); login($('pin').value.trim()); };
+$('cmdForm').onsubmit = e => { e.preventDefault(); const c = $('cmd').value.trim(); $('cmd').value = ''; run(c); };
+$('cmd').onkeydown = e => {
+  if (e.key === 'ArrowUp' && hIdx > 0) { $('cmd').value = hist[--hIdx]; e.preventDefault(); }
+  if (e.key === 'ArrowDown') { hIdx = Math.min(hist.length, hIdx + 1); $('cmd').value = hist[hIdx] || ''; e.preventDefault(); }
+};
+$('clearBtn').onclick = () => { $('out').textContent = ''; };
+$('installBtn').onclick = () => install($('apk').files);
+$('search').oninput = renderApps;
+$('filter').onchange = renderApps;
+$('reloadBtn').onclick = loadApps;
+const drop = $('drop');
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); install(e.dataTransfer.files); };
+for (const [label, cmd] of Object.entries(QUICK)) {
+  const b = document.createElement('button');
+  b.className = 'sec'; b.textContent = label;
+  b.onclick = () => (label !== 'Reiniciar' || confirm('¿Reiniciar el TV?')) && run(cmd);
+  $('quick').appendChild(b);
+}
+if (token) login(token);
+</script>
+</body>
+</html>
