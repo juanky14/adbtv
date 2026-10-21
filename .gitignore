@@ -9,3 +9,9 @@ __pycache__/
 .DS_Store
 .claude/
 .kotlin/
+
+# Firma de release: NUNCA subir
+keystore/
+keystore.properties
+*.jks
+*.keystore

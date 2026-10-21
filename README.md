@@ -80,6 +80,24 @@ red local y no abras el puerto 8080 a Internet. Cambia el PIN desde la app del T
 
 ## Compilar la APK
 ```
-./gradlew assembleDebug
+./gradlew assembleRelease
 ```
-Salida: `app/build/outputs/apk/debug/app-debug.apk`.
+Salida: `app/build/outputs/apk/release/app-release.apk`.
+
+### Firma
+Las versiones publicadas se firman con una clave propia. Android solo instala una actualización
+si está firmada con **la misma clave** que la versión instalada.
+
+- En local, Gradle lee `keystore.properties` (fuera de git):
+  ```
+  storeFile=keystore/adbtv-release.jks
+  storePassword=…
+  keyAlias=adbtv
+  keyPassword=…
+  ```
+- En CI, las mismas claves como variables de entorno: `ADBTV_KEYSTORE`, `ADBTV_KEYSTORE_PASSWORD`,
+  `ADBTV_KEY_ALIAS`, `ADBTV_KEY_PASSWORD`.
+- Sin clave, el release se firma con la clave debug (válido para pruebas, no para publicar).
+
+## Licencia
+[MIT](LICENSE)
