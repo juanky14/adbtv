@@ -76,18 +76,29 @@ class AdbServerService : Service() {
 
         fun stop(ctx: Context) = ctx.stopService(Intent(ctx, AdbServerService::class.java))
 
-        /** Activa ADB por red si hace falta (root) y conecta el cliente local. */
+        /** Activa ADB por red si hace falta (root) y conecta el cliente local; si no, modo permisos. */
         fun setupAdb(ctx: Context) {
+            Permissions.ensureAccessibility(ctx)
             if (!AdbBridge.isAdbPortOpen()) {
                 AppLog.i("ADB por red inactivo; comprobando root…")
                 if (!AdbBridge.enableWithRoot()) {
                     AppLog.i("Sin root: activa 'Depuración USB/ADB' en Opciones de desarrollador " +
                         "o ejecuta una vez desde un PC: adb tcpip ${AdbBridge.ADB_PORT}")
-                    AppLog.i("Mientras tanto la terminal web usa los permisos de la app (limitados)")
+                    reportPermissionMode(ctx)
                     return
                 }
             }
-            AdbBridge.connect(ctx)
+            if (!AdbBridge.connect(ctx, force = true)) reportPermissionMode(ctx)
+        }
+
+        private fun reportPermissionMode(ctx: Context) {
+            val missing = Permissions.missing(ctx)
+            if (missing.isEmpty()) {
+                AppLog.i("Modo permisos activo: control completo sin ADB")
+            } else {
+                AppLog.i("Modo permisos: faltan ${missing.joinToString()}. Ejecuta una vez desde un PC:")
+                AppLog.i("adb shell \"${Permissions.setupCommand(ctx)}\"")
+            }
         }
     }
 }

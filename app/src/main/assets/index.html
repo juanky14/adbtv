@@ -203,7 +203,15 @@ async function api(path, body) {
 async function refreshStatus() {
   const s = await api('/api/status');
   $('status').textContent = `${s.model} · Android ${s.android} · ${s.ip} · ` +
-    (s.adbConnected ? 'ADB conectado (shell)' : s.adbPortOpen ? 'ADB activo, no conectado' : 'sin ADB (permisos de app)');
+    ({ adb: 'ADB conectado (shell)',
+       permisos: 'modo permisos (sin ADB): terminal con permisos de la app',
+       limitado: 'sin ADB: faltan permisos, ver la pantalla del TV' })[s.mode] || '';
+  if (s.mode !== 'adb' && s.adbBlocked && !window._modeShown) {
+    window._modeShown = true;
+    print(`Este dispositivo no permite ADB local (p. ej. Fire OS 8). Funcionan: abrir apps, mando, multimedia, ` +
+          `volumen, instalar (confirmando en el TV), desinstalar y archivos. La terminal usa los permisos de la app.\n` +
+          (s.mode === 'limitado' ? `Para activar el modo permisos ejecuta una vez desde un PC:\n${s.setupCommand}\n` : ''), 'meta');
+  }
   return s;
 }
 

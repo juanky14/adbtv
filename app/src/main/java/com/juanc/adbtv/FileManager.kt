@@ -9,8 +9,9 @@ import java.io.File
 import java.io.InputStream
 
 /**
- * Gestor de archivos del TV. Todo pasa por ADB (usuario shell), así que se ve lo mismo que con
+ * Gestor de archivos del TV. Con ADB todo pasa por el usuario shell, así que se ve lo mismo que con
  * "adb shell": /sdcard, USB en /storage, /data/local/tmp, y lectura de /system.
+ * Sin ADB (modo permisos) delega en [LocalFiles].
  */
 object FileManager {
 
@@ -32,8 +33,10 @@ object FileManager {
     private fun requireAdb(ctx: Context): dadb.Dadb =
         AdbBridge.client(ctx) ?: throw IllegalStateException("El gestor de archivos necesita ADB conectado")
 
+    private fun hasAdb(ctx: Context) = AdbBridge.client(ctx) != null
+
     fun list(ctx: Context, rawPath: String): JSONObject {
-        requireAdb(ctx)
+        if (!hasAdb(ctx)) return LocalFiles.list(rawPath)
         val path = normalize(rawPath)
         val dir = if (path == "/") "/" else "$path/"
         val r = AdbBridge.exec(
@@ -67,6 +70,7 @@ object FileManager {
 
     /** Lugares de inicio: almacenamiento interno, USB conectados y carpetas útiles. */
     fun places(ctx: Context): JSONArray {
+        if (!hasAdb(ctx)) return LocalFiles.places()
         val out = JSONArray()
             .put(JSONObject().put("name", "Almacenamiento").put("path", "/sdcard"))
             .put(JSONObject().put("name", "Descargas").put("path", "/sdcard/Download"))
@@ -81,6 +85,7 @@ object FileManager {
 
     /** Descarga en streaming: dadb escribe en un pipe y NanoHTTPD lee del otro extremo. */
     fun open(ctx: Context, rawPath: String): InputStream {
+        if (!hasAdb(ctx)) return LocalFiles.open(rawPath)
         val d = requireAdb(ctx)
         val path = normalize(rawPath)
         val pipe = Pipe(256 * 1024)
@@ -97,13 +102,14 @@ object FileManager {
     }
 
     fun upload(ctx: Context, dir: String, name: String, local: File) {
+        if (!hasAdb(ctx)) return LocalFiles.upload(dir, name, local)
         val d = requireAdb(ctx)
         require(name.isNotBlank() && !name.contains('/')) { "Nombre de archivo no válido" }
         d.push(local, normalize("$dir/$name"), 438 /* 0666 */, System.currentTimeMillis())
     }
 
     fun op(ctx: Context, op: String, p: Map<String, String>): ExecResult {
-        requireAdb(ctx)
+        if (!hasAdb(ctx)) return LocalFiles.op(ctx, op, p, PROTECTED)
         fun path(key: String) = normalize(p[key] ?: throw IllegalArgumentException("Falta $key"))
         fun paths() = (p["paths"] ?: "").split('\n').filter { it.isNotBlank() }.map { normalize(it) }
             .also { require(it.isNotEmpty()) { "No hay archivos seleccionados" } }

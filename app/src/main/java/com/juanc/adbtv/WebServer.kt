@@ -121,7 +121,8 @@ class WebServer(private val ctx: Context, port: Int) : NanoHTTPD(port) {
                 val fg = screen.foreground
                 val label = fg?.let { p -> AppManager.launchables(ctx).firstOrNull { it.first == p }?.second }
                 json(Response.Status.OK, DeviceInfo.json(ctx).put("foreground", fg).put("foregroundLabel", label)
-                    .put("screenOn", screen.screenOn).put("adbConnected", AdbBridge.isConnected))
+                    .put("screenOn", screen.screenOn).put("adbConnected", AdbBridge.isConnected)
+                    .put("mode", AdbBridge.mode(ctx)))
             }
             "/api/launchable" -> {
                 val arr = org.json.JSONArray()
@@ -144,6 +145,7 @@ class WebServer(private val ctx: Context, port: Int) : NanoHTTPD(port) {
                     return json(Response.Status.BAD_REQUEST, JSONObject().put("error", "Tecla no válida"))
                 }
                 val times = param("times").toIntOrNull()?.coerceIn(1, 50) ?: 1
+                if (AdbBridge.client(ctx) == null) return result(NativeControl.key(ctx, key, times))
                 result(AdbBridge.exec(ctx, (1..times).joinToString("; ") { "input keyevent KEYCODE_$key" }, 30))
             }
             "/api/fs/places" ->newFixedLengthResponse(
@@ -188,6 +190,10 @@ class WebServer(private val ctx: Context, port: Int) : NanoHTTPD(port) {
     }
 
     private fun status() = JSONObject()
+        .put("mode", AdbBridge.mode(ctx))
+        .put("adbBlocked", AdbBridge.blockedBySystem)
+        .put("permissions", Permissions.json(ctx))
+        .put("setupCommand", "adb shell \"${Permissions.setupCommand(ctx)}\"")
         .put("adbConnected", AdbBridge.isConnected)
         .put("adbPortOpen", AdbBridge.isAdbPortOpen())
         .put("ip", NetUtils.localIp())

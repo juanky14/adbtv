@@ -45,7 +45,7 @@ class MainActivity : Activity() {
         }
         findViewById<Button>(R.id.btnRoot).setOnClickListener {
             Thread {
-                if (AdbBridge.enableWithRoot()) AdbBridge.connect(applicationContext)
+                if (AdbBridge.enableWithRoot()) AdbBridge.connect(applicationContext, force = true)
                 renderStatus()
             }.start()
         }
@@ -96,13 +96,20 @@ class MainActivity : Activity() {
         val status = buildString {
             append(if (running) "● Servicio activo" else "○ Servicio detenido")
             append("\n")
+            val missing = Permissions.missing(this@MainActivity)
             append(
                 when {
                     connected -> "● ADB por red activo y conectado (comandos como usuario shell)"
+                    AdbBridge.blockedBySystem && missing.isEmpty() ->
+                        "● Modo permisos: el sistema no permite ADB local, pero la app tiene todos los permisos"
+                    AdbBridge.blockedBySystem ->
+                        "◐ El sistema no permite ADB local. Para el modo permisos ejecuta una vez desde un PC:\n" +
+                            "adb shell \"${Permissions.setupCommand(this@MainActivity)}\""
                     portOpen -> "◐ ADB por red activo; acepta el diálogo de depuración y pulsa Conectar"
                     else -> "○ ADB por red inactivo: actívalo en Opciones de desarrollador, con root, o con 'adb tcpip 5555'"
                 }
             )
+            if (AdbBridge.blockedBySystem && missing.isNotEmpty()) append("\nFaltan: ${missing.joinToString()}")
         }
         handler.post {
             txtStatus.text = status

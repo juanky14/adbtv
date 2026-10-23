@@ -21,7 +21,6 @@ Control total de televisores Android desde la red local, en dos piezas:
 ### Amazon Fire TV
 Compatible con Fire TV Stick, Stick 4K / 4K Max, Lite, Cube y televisores con Fire TV integrado
 (Fire OS 5, 6, 7 y 8). **No** funciona en los modelos con Vega OS (no ejecutan apps Android).
-Los Fire TV traen ADB por red de serie, así que no hace falta PC ni root:
 
 1. *Ajustes → Mi Fire TV → Acerca de* → pulsa **7 veces** sobre el nombre del dispositivo hasta que
    aparezcan las *Opciones para desarrolladores* (en modelos antiguos ya están visibles).
@@ -29,13 +28,34 @@ Los Fire TV traen ADB por red de serie, así que no hace falta PC ni root:
 3. Instala la APK con la app **Downloader** (de la Appstore de Amazon): introduce la URL de la APK de la
    [última Release](https://github.com/juanky14/adbtv/releases/latest) y, cuando lo pida, permite a
    Downloader instalar apps desconocidas.
-4. Abre **ADB TV Server** desde *Tus apps y canales* y acepta "¿Permitir depuración USB?" marcando
-   *Permitir siempre desde este ordenador*.
+4. Abre **ADB TV Server** desde *Tus apps y canales*.
 
-En Fire TV, Home Assistant también puede **encender** el dispositivo (sale del reposo con la orden
-`WAKEUP`), porque mantiene la red activa mientras duerme. El volumen solo funciona si la tele admite
-HDMI-CEC; si no, controla el volumen de la propia tele. En Fire OS 5 (Android 5.1) el gestor de archivos
-puede no funcionar: ese sistema no trae las herramientas `find` y `stat` que usa.
+**Fire OS 8 bloquea que una app use ADB sobre su propio dispositivo**, así que ahí la app funciona en
+**modo permisos**. Hay que concederlos **una sola vez** desde un PC con ADB (no caducan al reiniciar):
+
+```
+adb connect IP-DEL-FIRE-TV:5555
+adb shell "pm grant com.juanc.adbtv android.permission.WRITE_SECURE_SETTINGS; appops set com.juanc.adbtv SYSTEM_ALERT_WINDOW allow; appops set com.juanc.adbtv GET_USAGE_STATS allow; appops set com.juanc.adbtv REQUEST_INSTALL_PACKAGES allow; appops set com.juanc.adbtv MANAGE_EXTERNAL_STORAGE allow; pm grant com.juanc.adbtv android.permission.READ_EXTERNAL_STORAGE; pm grant com.juanc.adbtv android.permission.WRITE_EXTERNAL_STORAGE"
+```
+
+(La pantalla de la app y el registro muestran este mismo comando si falta algún permiso.) La app activa
+sola su servicio de accesibilidad.
+
+| En modo permisos | |
+|---|---|
+| Abrir cualquier app, Inicio, Atrás, multimedia, volumen | ✅ |
+| Apagar y **encender** la pantalla (también desde Home Assistant) | ✅ |
+| App abierta y estado de la pantalla | ✅ |
+| Instalar `.apk` / `.apks` / `.xapk` | ✅ con confirmación en la tele |
+| Desinstalar | ✅ con confirmación en la tele |
+| Gestor de archivos (almacenamiento interno y USB) | ✅ |
+| Flechas y OK | ⚠️ solo en apps con vistas estándar; no en el inicio de Fire TV ni apps Compose |
+| Terminal | ⚠️ con los permisos de la app, no como usuario shell |
+| Detener, desactivar, borrar datos, restaurar apps del sistema | ❌ necesitan ADB |
+
+El volumen solo llega a la tele si admite HDMI-CEC. En Fire OS 5/6/7 la app puede usar ADB local con
+normalidad (acepta el diálogo "¿Permitir depuración USB?" marcando *Permitir siempre*); si no, también
+recurre al modo permisos.
 
 ### Panel web: `http://IP-DEL-TV:8080`
 - **Terminal**: comandos shell como `adb shell`.

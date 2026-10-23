@@ -59,22 +59,53 @@ object AdbBridge {
      * Conecta al adbd local. La primera vez el TV mostrará "¿Permitir depuración USB?":
      * hay que aceptarlo con el mando (marcar "Permitir siempre desde este ordenador").
      */
+    @Volatile private var retryAfter = 0L
+
+    /**
+     * true si el sistema corta las conexiones ADB que salen del propio dispositivo (Fire OS 8 lo hace:
+     * adbd ni siquiera llega a registrarlas). En ese caso la app funciona en "modo permisos".
+     */
+    @Volatile var blockedBySystem = false
+        private set
+
+    /** "adb" (usuario shell), "permisos" (APIs de Android con permisos concedidos) o "limitado". */
+    fun mode(ctx: Context): String = when {
+        isConnected -> "adb"
+        Permissions.ready(ctx) -> "permisos"
+        else -> "limitado"
+    }
+
     @Synchronized
-    fun connect(ctx: Context): Boolean {
+    fun connect(ctx: Context, force: Boolean = false): Boolean {
         if (dadb != null) return true
+        // Tras un fallo no reintentamos en cada petición: cada intento tarda y llena el registro
+        if (!force && System.currentTimeMillis() < retryAfter) return false
         if (!isAdbPortOpen()) {
             AppLog.i("El puerto $ADB_PORT no está abierto: ADB por red no está activo")
+            retryAfter = System.currentTimeMillis() + 60_000
             return false
         }
+        val started = System.currentTimeMillis()
         return try {
             AppLog.i("Conectando a adbd local… (acepta el diálogo de depuración en el TV si aparece)")
             val d = Dadb.create(HOST, ADB_PORT, keyPair(ctx))
             val r = d.shell("id")
             dadb = d
+            blockedBySystem = false
             AppLog.i("ADB local conectado: ${r.allOutput.trim()}")
             true
         } catch (e: Exception) {
-            AppLog.i("No se pudo conectar a adbd: ${e.message ?: e.javaClass.simpleName}")
+            // Un corte inmediato (sin llegar a pedir autorización) es el bloqueo del sistema
+            val instant = System.currentTimeMillis() - started < 1500 && e is java.io.EOFException
+            if (instant) {
+                blockedBySystem = true
+                AppLog.i("Este sistema no deja a las apps usar ADB sobre el propio dispositivo (p. ej. Fire OS 8). " +
+                    "Se usa el modo permisos.")
+                retryAfter = System.currentTimeMillis() + 10 * 60_000
+            } else {
+                AppLog.i("No se pudo conectar a adbd: ${e.message ?: e.javaClass.simpleName}")
+                retryAfter = System.currentTimeMillis() + 60_000
+            }
             false
         }
     }
@@ -139,6 +170,8 @@ object AdbBridge {
                 ExecResult("Error al instalar: ${e.message}\n", 1, "adb")
             }
         }
+        // Sin ADB ni root: PackageInstaller, con confirmación en la pantalla del TV (admite splits)
+        if (!hasRoot()) return NativeInstaller.install(ctx, apks)
         if (apks.size > 1) return ExecResult("Los APK divididos requieren ADB conectado\n", 1, "app")
         val apk = apks[0]
         apk.setReadable(true, false)

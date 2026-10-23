@@ -122,7 +122,7 @@ object AppManager {
      * Android ≤10 escribe "mResumedActivity"; Android 11+ (Fire OS 8, Google TV) "topResumedActivity".
      */
     fun screen(ctx: Context): Screen {
-        if (!AdbBridge.isConnected) return Screen(null, null)
+        if (!AdbBridge.isConnected) return Screen(NativeControl.foreground(ctx), NativeControl.screenOn(ctx))
         val out = AdbBridge.exec(
             ctx,
             "dumpsys activity activities | grep -m1 -E 'mResumedActivity|topResumedActivity|ResumedActivity:'; " +
@@ -161,6 +161,15 @@ object AppManager {
                 .flags and ApplicationInfo.FLAG_SYSTEM != 0
         } catch (_: Exception) {
             false
+        }
+        // Sin ADB: abrir y desinstalar (con confirmación en el TV) con APIs de Android; el resto necesita ADB
+        if (AdbBridge.client(ctx) == null) {
+            AppLog.i("Apps (sin ADB): $action $pkg")
+            return when (action) {
+                "launch" -> NativeControl.launch(ctx, pkg)
+                "uninstall" -> NativeControl.requestUninstall(ctx, pkg)
+                else -> ExecResult("'$action' necesita ADB; en este dispositivo solo se puede abrir y desinstalar\n", 1, "app")
+            }
         }
         val cmd = when (action) {
             // Apps de sistema: solo se ocultan para el usuario 0 (reversible con "restore")
