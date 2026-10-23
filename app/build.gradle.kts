@@ -13,8 +13,8 @@ android {
         applicationId = "com.juanc.adbtv"
         minSdk = 22
         targetSdk = 34
-        versionCode = 9
-        versionName = "1.8.0"
+        versionCode = 10
+        versionName = "1.8.1"
     }
 
     // Clave de release: keystore.properties (local, fuera de git) o variables de entorno (CI).
