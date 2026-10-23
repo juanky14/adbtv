@@ -50,6 +50,21 @@
             </intent-filter>
         </activity>
 
+        <!-- Pantalla de inicio sencilla (sin anuncios). En Fire TV se activa redirigiendo el inicio de Amazon -->
+        <activity
+            android:name=".SimpleHomeActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="Inicio"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".AdbServerService"
             android:exported="false"

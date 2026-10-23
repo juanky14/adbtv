@@ -57,6 +57,22 @@ El volumen solo llega a la tele si admite HDMI-CEC. En Fire OS 5/6/7 la app pued
 normalidad (acepta el diálogo "¿Permitir depuración USB?" marcando *Permitir siempre*); si no, también
 recurre al modo permisos.
 
+### Inicio sencillo (sin anuncios)
+Una pantalla de inicio minimalista: reloj, tus apps favoritas en mosaicos grandes, *Todas las apps* y
+*Ajustes*. Mantén pulsado **OK** sobre una app para añadirla o quitarla de favoritas.
+
+- Actívalo con el botón **Inicio sencillo** de la app, desde el panel web o con `POST /api/home enabled=1`.
+- En Fire TV (donde el inicio de Amazon no se puede desactivar) necesita el modo permisos: el servicio
+  de accesibilidad abre el inicio sencillo cada vez que aparece el de Amazon. Los Ajustes de Fire TV
+  siguen funcionando, y *Todas las apps → Inicio original* muestra el de Amazon durante 2 minutos.
+
+### Debloat de Fire TV (opcional)
+Desactiva publicidad, telemetría y extras con `pm disable-user --user 0 <paquete>` desde un PC. Fire OS
+protege algunos (p. ej. `com.amazon.ftvads.deeplinking`, `com.amazon.device.metrics`): a esos se les puede
+prohibir funcionar en segundo plano con `cmd appops set <paquete> RUN_ANY_IN_BACKGROUND ignore`.
+Si desactivas el salvapantallas de Amazon (`com.amazon.ftv.screensaver`), apaga también el salvapantallas
+(`settings put secure screensaver_enabled 0`); si no, el Fire TV se suspende en cuanto debería mostrarlo.
+
 ### Panel web: `http://IP-DEL-TV:8080`
 - **Terminal**: comandos shell como `adb shell`.
 - **Apps**: instalar `.apk` / `.apks` / `.xapk` (arrastrando), abrir, detener, desactivar, borrar datos,

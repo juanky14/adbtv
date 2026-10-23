@@ -55,7 +55,9 @@ object NativeControl {
     }
 
     private fun home(ctx: Context) = onMain {
-        ctx.startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        val intent = if (Prefs.homeOverride(ctx)) Intent(ctx, SimpleHomeActivity::class.java)
+        else Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        ctx.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         true
     }
 
@@ -125,7 +127,8 @@ object NativeControl {
         repeat(times) {
             ok = ok && try {
                 when (key) {
-                    "HOME" -> acc?.let { onMain { it.global(AccessibilityService.GLOBAL_ACTION_HOME) } } ?: home(ctx)
+                    "HOME" -> if (Prefs.homeOverride(ctx)) home(ctx)
+                        else acc?.let { onMain { it.global(AccessibilityService.GLOBAL_ACTION_HOME) } } ?: home(ctx)
                     "BACK" -> onMain { acc!!.global(AccessibilityService.GLOBAL_ACTION_BACK) }
                     "DPAD_CENTER", "ENTER" -> onMain { acc!!.clickFocused() }
                     in RemoteAccessibilityService.DIRECTIONS -> onMain { acc!!.moveFocus(RemoteAccessibilityService.DIRECTIONS.getValue(key)) }

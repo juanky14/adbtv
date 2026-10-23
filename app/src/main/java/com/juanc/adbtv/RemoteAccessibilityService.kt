@@ -17,6 +17,17 @@ class RemoteAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         instance = this
         AppLog.i("Control remoto (accesibilidad) listo")
+        // Fire OS 8 no entrega BOOT_COMPLETED a apps instaladas a mano, pero sí arranca este servicio al
+        // encender: lo aprovechamos para levantar el servidor
+        if (Prefs.autoStart(this) && !AdbServerService.running) AdbServerService.start(this)
+        // Al encender, el inicio del sistema puede aparecer antes de que este servicio arranque
+        rootInActiveWindow?.packageName?.toString()?.let { pkg ->
+            val cls = resolveStockHome()?.takeIf { it.first == pkg }?.second
+            if (cls != null) {
+                lastWindow = pkg to cls
+                maybeReplaceStockHome(pkg, cls)
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -30,6 +41,47 @@ class RemoteAccessibilityService : AccessibilityService() {
         // Ignora capas del sistema y teclados, que no son "la app abierta"
         if (pkg == "com.android.systemui" || pkg == "android" || pkg.contains("inputmethod")) return
         foreground = pkg
+        lastWindow = pkg to event.className?.toString()
+        maybeReplaceStockHome(pkg, event.className?.toString())
+    }
+
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    @Volatile private var lastWindow: Pair<String, String?>? = null
+
+    private fun isStockHome(pkg: String, cls: String?): Boolean {
+        val home = stockHome ?: resolveStockHome()?.also { stockHome = it } ?: return false
+        if (pkg != home.first || cls == null) return false
+        return cls == home.second || cls.endsWith(home.second.substringAfterLast('.'))
+    }
+
+    /**
+     * Si está activado el inicio de ADB TV y aparece la pantalla de inicio del sistema (p. ej. la de
+     * Amazon, que Fire OS no deja desactivar), la sustituimos por la nuestra. Solo la actividad de
+     * inicio: los Ajustes de Fire TV viven en el mismo paquete y deben seguir funcionando.
+     */
+    private fun maybeReplaceStockHome(pkg: String, cls: String?) {
+        if (!Prefs.homeOverride(this) || System.currentTimeMillis() < stockHomeAllowedUntil) return
+        if (!isStockHome(pkg, cls)) return
+        // El inicio de Amazon también se usa de paso (p. ej. para abrir Ajustes): solo lo sustituimos si
+        // sigue en pantalla un momento después
+        handler.removeCallbacksAndMessages(null)
+        handler.postDelayed({
+            val (p, c) = lastWindow ?: return@postDelayed
+            if (!isStockHome(p, c) || System.currentTimeMillis() < stockHomeAllowedUntil) return@postDelayed
+            startActivity(
+                android.content.Intent(this, SimpleHomeActivity::class.java)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            )
+        }, 800)
+    }
+
+    /** Actividad de inicio del sistema (la que se abriría sin ADB TV). */
+    private fun resolveStockHome(): Pair<String, String>? {
+        val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME)
+        return packageManager.queryIntentActivities(intent, 0)
+            .filter { it.activityInfo.packageName != packageName }
+            .maxByOrNull { it.priority }
+            ?.activityInfo?.let { it.packageName to it.name }
     }
 
     override fun onInterrupt() {}
@@ -102,6 +154,21 @@ class RemoteAccessibilityService : AccessibilityService() {
             private set
         @Volatile var foreground: String? = null
             private set
+
+        @Volatile private var stockHome: Pair<String, String>? = null
+        @Volatile private var stockHomeAllowedUntil = 0L
+
+        fun stockHomePackage(ctx: android.content.Context): String? {
+            val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME)
+            return ctx.packageManager.queryIntentActivities(intent, 0)
+                .filter { it.activityInfo.packageName != ctx.packageName }
+                .maxByOrNull { it.priority }?.activityInfo?.packageName
+        }
+
+        /** Permite ver el inicio del sistema un rato (p. ej. al abrir los Ajustes de Fire TV desde el nuestro). */
+        fun allowStockHome(ms: Long) {
+            stockHomeAllowedUntil = System.currentTimeMillis() + ms
+        }
 
         val DIRECTIONS = mapOf(
             "DPAD_UP" to View.FOCUS_UP,

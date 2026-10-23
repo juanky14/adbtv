@@ -148,7 +148,21 @@ class WebServer(private val ctx: Context, port: Int) : NanoHTTPD(port) {
                 if (AdbBridge.client(ctx) == null) return result(NativeControl.key(ctx, key, times))
                 result(AdbBridge.exec(ctx, (1..times).joinToString("; ") { "input keyevent KEYCODE_$key" }, 30))
             }
-            "/api/fs/places" ->newFixedLengthResponse(
+            "/api/home" -> {
+                // POST enabled=1|0 y/o favorites=pkg1,pkg2… (en orden)
+                if (session.method == Method.POST) {
+                    param("enabled").takeIf { it.isNotEmpty() }?.let { Prefs.setHomeOverride(ctx, it == "1") }
+                    param("favorites").takeIf { it.isNotEmpty() }?.let { csv ->
+                        Prefs.setHomeFavorites(ctx, csv.split(',').map { it.trim() }.filter { AppManager.isValidPackage(it) })
+                    }
+                    AppLog.i("[$ip] inicio sencillo: ${if (Prefs.homeOverride(ctx)) "activado" else "desactivado"}")
+                }
+                json(Response.Status.OK, JSONObject()
+                    .put("enabled", Prefs.homeOverride(ctx))
+                    .put("needsAccessibility", !Permissions.accessibilityEnabled(ctx))
+                    .put("favorites", org.json.JSONArray(Prefs.homeFavorites(ctx))))
+            }
+            "/api/fs/places" -> newFixedLengthResponse(
                 Response.Status.OK, "application/json; charset=utf-8", FileManager.places(ctx).toString()
             )
             "/api/fs/list" -> json(Response.Status.OK, FileManager.list(ctx, param("path").ifEmpty { "/sdcard" }))

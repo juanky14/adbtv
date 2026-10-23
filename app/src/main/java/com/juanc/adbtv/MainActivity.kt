@@ -19,6 +19,7 @@ class MainActivity : Activity() {
     private lateinit var txtLog: TextView
     private lateinit var scrollLog: ScrollView
     private lateinit var btnStop: Button
+    private lateinit var btnHome: Button
 
     private val logListener: () -> Unit = { handler.post { renderLog() } }
     private val ticker = object : Runnable {
@@ -38,6 +39,18 @@ class MainActivity : Activity() {
         txtLog = findViewById(R.id.txtLog)
         scrollLog = findViewById(R.id.scrollLog)
         btnStop = findViewById(R.id.btnStop)
+        btnHome = findViewById(R.id.btnHome)
+        btnHome.setOnClickListener {
+            val enable = !Prefs.homeOverride(this)
+            if (enable && !Permissions.accessibilityEnabled(this)) {
+                AppLog.i("El inicio sencillo necesita el servicio de accesibilidad (modo permisos)")
+                return@setOnClickListener
+            }
+            Prefs.setHomeOverride(this, enable)
+            AppLog.i(if (enable) "Inicio sencillo activado: el botón Inicio abre la pantalla de ADB TV" else "Inicio sencillo desactivado")
+            if (enable) startActivity(android.content.Intent(this, SimpleHomeActivity::class.java))
+            Thread { renderStatus() }.start()
+        }
 
         findViewById<Button>(R.id.btnConnect).setOnClickListener {
             ensureRunning()
@@ -117,6 +130,7 @@ class MainActivity : Activity() {
             txtWebUrl.text = if (running) "http://$ip:${Prefs.WEB_PORT}" else "(servidor detenido)"
             txtPin.text = "PIN: $pin"
             btnStop.text = if (running) "Detener" else "Iniciar"
+            btnHome.text = if (Prefs.homeOverride(this)) "Inicio sencillo: sí" else "Inicio sencillo: no"
         }
     }
 

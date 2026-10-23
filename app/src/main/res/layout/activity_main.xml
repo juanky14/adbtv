@@ -102,6 +102,11 @@
                 android:text="Nuevo PIN" />
 
             <Button
+                android:id="@+id/btnHome"
+                style="@style/TvButton"
+                android:text="Inicio sencillo" />
+
+            <Button
                 android:id="@+id/btnStop"
                 style="@style/TvButton"
                 android:text="Detener" />
