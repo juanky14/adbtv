@@ -22,7 +22,14 @@ from .api import AdbTvError, AppNotFound
 from .const import HIDDEN_SOURCES, SERVICE_LAUNCH_APP, SERVICE_SEND_KEY, SERVICE_SHELL
 from .entity import AdbTvEntity
 
-LAUNCHERS = {"com.google.android.tvlauncher", "com.google.android.leanbacklauncher", "com.mitv.tvhome.atv"}
+# Pantallas de inicio: con ellas en primer plano el TV está "en espera" (idle)
+LAUNCHERS = {
+    "com.google.android.tvlauncher",          # Android TV
+    "com.google.android.apps.tv.launcherx",   # Google TV
+    "com.google.android.leanbacklauncher",    # Android TV antiguo
+    "com.amazon.tv.launcher",                 # Fire TV
+    "com.mitv.tvhome.atv",                    # Xiaomi PatchWall
+}
 
 
 async def async_setup_entry(
@@ -51,7 +58,8 @@ class AdbTvMediaPlayer(AdbTvEntity, MediaPlayerEntity):
     _attr_name = None  # usa el nombre del dispositivo
     _attr_device_class = MediaPlayerDeviceClass.TV
     _attr_supported_features = (
-        MediaPlayerEntityFeature.TURN_OFF
+        MediaPlayerEntityFeature.TURN_ON
+        | MediaPlayerEntityFeature.TURN_OFF
         | MediaPlayerEntityFeature.VOLUME_STEP
         | MediaPlayerEntityFeature.VOLUME_MUTE
         | MediaPlayerEntityFeature.SELECT_SOURCE
@@ -73,7 +81,8 @@ class AdbTvMediaPlayer(AdbTvEntity, MediaPlayerEntity):
     @property
     def state(self) -> MediaPlayerState:
         data = self.coordinator.data
-        if not data.online:
+        # Fire TV y otros mantienen la red en reposo: app viva pero pantalla apagada
+        if not data.online or data.info.get("screenOn") is False:
             return MediaPlayerState.OFF
         return MediaPlayerState.IDLE if data.foreground in LAUNCHERS else MediaPlayerState.ON
 
@@ -121,6 +130,14 @@ class AdbTvMediaPlayer(AdbTvEntity, MediaPlayerEntity):
     async def async_shell(self, command: str, timeout: int = 30) -> ServiceResponse:
         r = await self._call(self.coordinator.client.shell(command, timeout))
         return {"output": r.get("output", ""), "exit_code": r.get("exit")}
+
+    async def async_turn_on(self) -> None:
+        """Solo funciona si el TV sigue en la red en reposo (Fire TV sí; muchos Android TV no)."""
+        if not self.coordinator.data.online:
+            raise HomeAssistantError(
+                "ADB TV: el televisor no responde en la red; este modelo no permite encenderlo a distancia"
+            )
+        await self._call(self.coordinator.client.key("WAKEUP"))
 
     async def async_turn_off(self) -> None:
         await self._call(self.coordinator.client.key("SLEEP"))

@@ -11,10 +11,10 @@ android {
 
     defaultConfig {
         applicationId = "com.juanc.adbtv"
-        minSdk = 24
+        minSdk = 22
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.5.0"
+        versionCode = 7
+        versionName = "1.6.0"
     }
 
     // Clave de release: keystore.properties (local, fuera de git) o variables de entorno (CI).
@@ -58,4 +58,5 @@ android {
 dependencies {
     implementation("dev.mobile:dadb:1.2.10")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
+    testImplementation("junit:junit:4.13.2")
 }

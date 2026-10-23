@@ -147,11 +147,21 @@ object AdbBridge {
         else ExecResult("No se pudo instalar: se necesita ADB conectado o root.\n${r.output}", 1, "app")
     }
 
-    private fun keyPair(ctx: Context): AdbKeyPair {
-        val priv = File(ctx.filesDir, "adbkey")
-        val pub = File(ctx.filesDir, "adbkey.pub")
-        if (!priv.exists() || !pub.exists()) AdbKeyPair.generate(priv, pub)
-        return AdbKeyPair.read(priv, pub)
+    private fun keyPair(ctx: Context): AdbKeyPair =
+        AdbKeys.load(File(ctx.filesDir, "adbkey"), File(ctx.filesDir, "adbkey.pub"))
+
+    /** Process.waitFor(timeout) es de Android 8+: esperamos sondeando exitValue(). */
+    private fun waitFor(p: Process, timeoutSec: Long): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutSec * 1000
+        while (true) {
+            try {
+                p.exitValue()
+                return true
+            } catch (_: IllegalThreadStateException) {
+                if (System.currentTimeMillis() >= deadline) return false
+                Thread.sleep(50)
+            }
+        }
     }
 
     fun runLocal(command: List<String>, timeoutSec: Long): ExecResult {
@@ -162,7 +172,7 @@ object AdbBridge {
             val reader = Thread {
                 try { p.inputStream.bufferedReader().forEachLine { out.append(it).append('\n') } } catch (_: Exception) {}
             }.apply { start() }
-            if (!p.waitFor(timeoutSec, TimeUnit.SECONDS)) {
+            if (!waitFor(p, timeoutSec)) {
                 p.destroy()
                 reader.join(500)
                 return ExecResult("$out[tiempo agotado tras ${timeoutSec}s]\n", 124, "app")

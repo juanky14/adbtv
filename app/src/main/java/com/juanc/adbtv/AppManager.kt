@@ -1,5 +1,6 @@
 package com.juanc.adbtv
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -36,6 +37,8 @@ object AppManager {
 
     fun isValidPackage(pkg: String) = PKG_RE.matches(pkg)
 
+    // MATCH_* (API 24) valen lo mismo que los GET_* antiguos, así que funcionan en Android 5+
+    @SuppressLint("InlinedApi")
     fun list(ctx: Context): JSONArray {
         val pm = ctx.packageManager
         @Suppress("DEPRECATION")
@@ -112,11 +115,28 @@ object AppManager {
             ?: apps.firstOrNull { simplify(it.first).contains(q) }
     }
 
-    /** Paquete de la app en primer plano (requiere ADB). */
-    fun foreground(ctx: Context): String? {
-        if (!AdbBridge.isConnected) return null
-        val out = AdbBridge.exec(ctx, "dumpsys activity activities | grep -m1 mResumedActivity", 10).output
-        return Regex("u0 ([A-Za-z0-9_.]+)/").find(out)?.groupValues?.get(1)
+    data class Screen(val foreground: String?, val screenOn: Boolean?)
+
+    /**
+     * App en primer plano y si la pantalla está encendida (requiere ADB). Una sola llamada.
+     * Android ≤10 escribe "mResumedActivity"; Android 11+ (Fire OS 8, Google TV) "topResumedActivity".
+     */
+    fun screen(ctx: Context): Screen {
+        if (!AdbBridge.isConnected) return Screen(null, null)
+        val out = AdbBridge.exec(
+            ctx,
+            "dumpsys activity activities | grep -m1 -E 'mResumedActivity|topResumedActivity|ResumedActivity:'; " +
+                "dumpsys power | grep -m1 -E 'mWakefulness=|Display Power: state='",
+            10,
+        ).output
+        val fg = Regex("u0 ([A-Za-z0-9_.]+)/").find(out)?.groupValues?.get(1)
+        val on = when {
+            // Dreaming = salvapantallas: la tele sigue encendida
+            Regex("mWakefulness=(Awake|Dreaming)").containsMatchIn(out) || out.contains("state=ON") -> true
+            out.contains("mWakefulness=") || out.contains("state=OFF") -> false  // Asleep / Dozing
+            else -> null
+        }
+        return Screen(fg, on)
     }
 
     private fun launchComponent(ctx: Context, pkg: String): String? {
@@ -126,6 +146,7 @@ object AppManager {
     }
 
     /** Ejecuta una acción sobre un paquete. Devuelve el comando ejecutado y su salida. */
+    @SuppressLint("InlinedApi")
     fun action(ctx: Context, pkg: String, action: String, force: Boolean): ExecResult {
         if (!isValidPackage(pkg)) return ExecResult("Nombre de paquete no válido\n", 2, "-")
         if (pkg == ctx.packageName && action in setOf("uninstall", "disable", "clear", "stop")) {
@@ -145,7 +166,7 @@ object AppManager {
             // Apps de sistema: solo se ocultan para el usuario 0 (reversible con "restore")
             "uninstall" -> if (isSystem) "pm uninstall -k --user 0 $pkg" else "pm uninstall $pkg"
             "uninstall-keep" -> "pm uninstall -k --user 0 $pkg"
-            "restore" -> "cmd package install-existing $pkg"
+            "restore" -> "pm install-existing $pkg"
             "disable" -> "pm disable-user --user 0 $pkg"
             "enable" -> "pm enable $pkg"
             "stop" -> "am force-stop $pkg"

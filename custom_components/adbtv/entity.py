@@ -21,7 +21,7 @@ class AdbTvEntity(CoordinatorEntity[AdbTvCoordinator]):
             identifiers={(DOMAIN, self._device_id)},
             name=entry.title,
             manufacturer=info.get("manufacturer"),
-            model=info.get("model"),
+            model=info.get("modelName") or info.get("model"),
             sw_version=info.get("appVersion"),
             configuration_url=coordinator.client.base_url,
         )

@@ -18,6 +18,25 @@ Control total de televisores Android desde la red local, en dos piezas:
 > Android 9 y anteriores no tienen depuración inalámbrica: sin ADB por red ni root, la app funciona
 > con permisos limitados (no puede instalar, gestionar apps ni ver archivos del sistema).
 
+### Amazon Fire TV
+Compatible con Fire TV Stick, Stick 4K / 4K Max, Lite, Cube y televisores con Fire TV integrado
+(Fire OS 5, 6, 7 y 8). **No** funciona en los modelos con Vega OS (no ejecutan apps Android).
+Los Fire TV traen ADB por red de serie, así que no hace falta PC ni root:
+
+1. *Ajustes → Mi Fire TV → Acerca de* → pulsa **7 veces** sobre el nombre del dispositivo hasta que
+   aparezcan las *Opciones para desarrolladores* (en modelos antiguos ya están visibles).
+2. *Ajustes → Mi Fire TV → Opciones para desarrolladores* → activa **Depuración ADB**.
+3. Instala la APK con la app **Downloader** (de la Appstore de Amazon): introduce la URL de la APK de la
+   [última Release](https://github.com/juanky14/adbtv/releases/latest) y, cuando lo pida, permite a
+   Downloader instalar apps desconocidas.
+4. Abre **ADB TV Server** desde *Tus apps y canales* y acepta "¿Permitir depuración USB?" marcando
+   *Permitir siempre desde este ordenador*.
+
+En Fire TV, Home Assistant también puede **encender** el dispositivo (sale del reposo con la orden
+`WAKEUP`), porque mantiene la red activa mientras duerme. El volumen solo funciona si la tele admite
+HDMI-CEC; si no, controla el volumen de la propia tele. En Fire OS 5 (Android 5.1) el gestor de archivos
+puede no funcionar: ese sistema no trae las herramientas `find` y `stat` que usa.
+
 ### Panel web: `http://IP-DEL-TV:8080`
 - **Terminal**: comandos shell como `adb shell`.
 - **Apps**: instalar `.apk` / `.apks` / `.xapk` (arrastrando), abrir, detener, desactivar, borrar datos,
@@ -40,7 +59,7 @@ mDNS bloqueado), añade la integración **ADB TV** a mano con la IP y el PIN. Ca
 ### Qué obtienes
 | Entidad / servicio | Uso |
 |---|---|
-| `media_player.<tv>` | Estado (encendido/apagado, app actual), **fuente = cualquier app instalada**, volumen, silencio, play/pausa, apagar |
+| `media_player.<tv>` | Estado (encendido/apagado, app actual), **fuente = cualquier app instalada**, volumen, silencio, play/pausa, apagar y encender (este último en Fire TV y en los TV que siguen en red en reposo) |
 | `switch.<tv>_<app>` | Una por app favorita (*Configurar* en la integración). Encender = abrir, apagar = inicio |
 | `adbtv.launch_app` | Abrir una app por nombre (`netflix`, `prime video`) o paquete |
 | `adbtv.send_key` | Pulsar teclas del mando (`HOME`, `BACK`, `DPAD_UP`, `VOLUME_UP`…) |

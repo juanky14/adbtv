@@ -117,10 +117,11 @@ class WebServer(private val ctx: Context, port: Int) : NanoHTTPD(port) {
             }
             // ---- API estable para integraciones (Home Assistant, scripts…) ----
             "/api/info" -> {
-                val fg = AppManager.foreground(ctx)
+                val screen = AppManager.screen(ctx)
+                val fg = screen.foreground
                 val label = fg?.let { p -> AppManager.launchables(ctx).firstOrNull { it.first == p }?.second }
                 json(Response.Status.OK, DeviceInfo.json(ctx).put("foreground", fg).put("foregroundLabel", label)
-                    .put("adbConnected", AdbBridge.isConnected))
+                    .put("screenOn", screen.screenOn).put("adbConnected", AdbBridge.isConnected))
             }
             "/api/launchable" -> {
                 val arr = org.json.JSONArray()
@@ -190,7 +191,7 @@ class WebServer(private val ctx: Context, port: Int) : NanoHTTPD(port) {
         .put("adbConnected", AdbBridge.isConnected)
         .put("adbPortOpen", AdbBridge.isAdbPortOpen())
         .put("ip", NetUtils.localIp())
-        .put("model", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+        .put("model", DeviceInfo.modelName())
         .put("android", android.os.Build.VERSION.RELEASE)
 
     private fun result(r: ExecResult) = json(
