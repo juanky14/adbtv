@@ -32,7 +32,7 @@ object Prefs {
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean("home_override", value).apply()
 
     /** Apps de servicios de vídeo y música habituales que se ponen en favoritas la primera vez. */
-    private val DEFAULT_FAVORITES = listOf(
+    val DEFAULT_FAVORITES = listOf(
         "com.netflix.ninja", "com.amazon.firebat", "com.amazon.amazonvideo.livingroom",
         "com.amazon.firetv.youtube", "com.google.android.youtube.tv", "com.disney.disneyplus",
         "com.dazn", "com.spotify.tv.android", "tv.twitch.android.viewer", "tv.twitch.android.app",
