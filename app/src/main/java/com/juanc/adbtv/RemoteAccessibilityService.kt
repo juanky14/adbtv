@@ -3,6 +3,7 @@ package com.juanc.adbtv
 import android.accessibilityservice.AccessibilityService
 import android.graphics.Rect
 import android.os.Build
+import android.view.KeyEvent
 import android.view.View
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -22,7 +23,7 @@ class RemoteAccessibilityService : AccessibilityService() {
         if (Prefs.autoStart(this) && !AdbServerService.running) AdbServerService.start(this)
         // Al encender, el inicio del sistema puede aparecer antes de que este servicio arranque
         rootInActiveWindow?.packageName?.toString()?.let { pkg ->
-            val cls = resolveStockHome()?.takeIf { it.first == pkg }?.second
+            val cls = stockHomes(this).firstOrNull { it.first == pkg }?.second
             if (cls != null) {
                 lastWindow = pkg to cls
                 maybeReplaceStockHome(pkg, cls)
@@ -49,9 +50,39 @@ class RemoteAccessibilityService : AccessibilityService() {
     @Volatile private var lastWindow: Pair<String, String?>? = null
 
     private fun isStockHome(pkg: String, cls: String?): Boolean {
-        val home = stockHome ?: resolveStockHome()?.also { stockHome = it } ?: return false
-        if (pkg != home.first || cls == null) return false
-        return cls == home.second || cls.endsWith(home.second.substringAfterLast('.'))
+        if (cls == null) return false
+        val homes = stockHomeCache ?: stockHomes(this).also { stockHomeCache = it }
+        return homes.any { (p, c) -> p == pkg && (cls == c || cls.endsWith("." + c.substringAfterLast('.'))) }
+    }
+
+    /**
+     * Botón Inicio del mando con el inicio de ADB TV activado: abre el nuestro directamente, sin pasar
+     * por el del sistema. Mantenerlo pulsado abre el inicio original (escape por si hiciera falta).
+     */
+    override fun onKeyEvent(event: KeyEvent): Boolean {
+        if (event.keyCode != KeyEvent.KEYCODE_HOME || !Prefs.homeOverride(this)) return false
+        when (event.action) {
+            KeyEvent.ACTION_DOWN -> if (event.repeatCount == 1) {
+                homeLongPressed = true
+                openStockHome(this)
+            }
+            KeyEvent.ACTION_UP -> {
+                if (!homeLongPressed && !event.isCanceled) openSimpleHome()
+                homeLongPressed = false
+            }
+        }
+        return true
+    }
+
+    private var homeLongPressed = false
+
+    private fun openSimpleHome() {
+        stockHomeAllowedUntil = 0L
+        handler.removeCallbacksAndMessages(null)
+        startActivity(
+            android.content.Intent(this, SimpleHomeActivity::class.java)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        )
     }
 
     /**
@@ -68,20 +99,8 @@ class RemoteAccessibilityService : AccessibilityService() {
         handler.postDelayed({
             val (p, c) = lastWindow ?: return@postDelayed
             if (!isStockHome(p, c) || System.currentTimeMillis() < stockHomeAllowedUntil) return@postDelayed
-            startActivity(
-                android.content.Intent(this, SimpleHomeActivity::class.java)
-                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            )
+            openSimpleHome()
         }, 800)
-    }
-
-    /** Actividad de inicio del sistema (la que se abriría sin ADB TV). */
-    private fun resolveStockHome(): Pair<String, String>? {
-        val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME)
-        return packageManager.queryIntentActivities(intent, 0)
-            .filter { it.activityInfo.packageName != packageName }
-            .maxByOrNull { it.priority }
-            ?.activityInfo?.let { it.packageName to it.name }
     }
 
     override fun onInterrupt() {}
@@ -155,14 +174,42 @@ class RemoteAccessibilityService : AccessibilityService() {
         @Volatile var foreground: String? = null
             private set
 
-        @Volatile private var stockHome: Pair<String, String>? = null
+        @Volatile private var stockHomeCache: List<Pair<String, String>>? = null
         @Volatile private var stockHomeAllowedUntil = 0L
 
+        private fun homeIntent() =
+            android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME)
+
+        /**
+         * Todas las actividades de inicio del sistema (las que se abrirían sin ADB TV). Incluye la clase
+         * real de los alias: la ventana que se ve en pantalla lleva el nombre de la actividad de destino.
+         */
+        fun stockHomes(ctx: android.content.Context): List<Pair<String, String>> =
+            ctx.packageManager.queryIntentActivities(homeIntent(), 0)
+                .filter { it.activityInfo.packageName != ctx.packageName && it.activityInfo.packageName != "android" }
+                .flatMap { r ->
+                    val a = r.activityInfo
+                    listOfNotNull(a.packageName to a.name, a.targetActivity?.let { a.packageName to it })
+                }
+
         fun stockHomePackage(ctx: android.content.Context): String? {
-            val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME)
-            return ctx.packageManager.queryIntentActivities(intent, 0)
-                .filter { it.activityInfo.packageName != ctx.packageName }
+            // El inicio predeterminado del sistema (si no somos nosotros), si no el de más prioridad
+            ctx.packageManager.resolveActivity(homeIntent(), android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+                ?.activityInfo?.packageName
+                ?.takeIf { it != ctx.packageName && it != "android" }
+                ?.let { return it }
+            return ctx.packageManager.queryIntentActivities(homeIntent(), 0)
+                .filter { it.activityInfo.packageName != ctx.packageName && it.activityInfo.packageName != "android" }
                 .maxByOrNull { it.priority }?.activityInfo?.packageName
+        }
+
+        /** Abre el inicio original del sistema durante 2 minutos sin que lo sustituyamos. */
+        fun openStockHome(ctx: android.content.Context) {
+            allowStockHome(120_000)
+            ctx.startActivity(
+                homeIntent().setPackage(stockHomePackage(ctx) ?: return)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
         }
 
         /** Permite ver el inicio del sistema un rato (p. ej. al abrir los Ajustes de Fire TV desde el nuestro). */

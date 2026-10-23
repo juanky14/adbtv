@@ -55,6 +55,8 @@ object NativeControl {
     }
 
     private fun home(ctx: Context) = onMain {
+        // Con el inicio de ADB TV activado, Inicio vuelve siempre al nuestro (aunque se viera el original)
+        if (Prefs.homeOverride(ctx)) RemoteAccessibilityService.allowStockHome(0)
         val intent = if (Prefs.homeOverride(ctx)) Intent(ctx, SimpleHomeActivity::class.java)
         else Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
         ctx.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

@@ -358,12 +358,7 @@ class SimpleHomeActivity : Activity() {
             }
             "stock" -> {
                 // El inicio original (perfiles, contenidos de Amazon…) durante 2 minutos
-                RemoteAccessibilityService.allowStockHome(120_000)
-                startActivity(
-                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-                        .setPackage(RemoteAccessibilityService.stockHomePackage(this) ?: return)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
+                RemoteAccessibilityService.openStockHome(this)
             }
             else -> {
                 val pm = packageManager

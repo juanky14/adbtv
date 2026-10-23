@@ -65,6 +65,9 @@ Una pantalla de inicio minimalista: reloj, tus apps favoritas en mosaicos grande
 - En Fire TV (donde el inicio de Amazon no se puede desactivar) necesita el modo permisos: el servicio
   de accesibilidad abre el inicio sencillo cada vez que aparece el de Amazon. Los Ajustes de Fire TV
   siguen funcionando, y *Todas las apps → Inicio original* muestra el de Amazon durante 2 minutos.
+- Con **Inicio: sí**, el botón Inicio del mando (y el "salir al menú principal" de las apps) lleva
+  siempre al inicio sencillo. Mantener pulsado Inicio abre el original. Con **Inicio: no** todo vuelve
+  al inicio de la tele.
 
 ### Debloat de Fire TV (opcional)
 Desactiva publicidad, telemetría y extras con `pm disable-user --user 0 <paquete>` desde un PC. Fire OS
