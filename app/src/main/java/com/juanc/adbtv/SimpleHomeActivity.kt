@@ -31,6 +31,11 @@ import java.util.Locale
  */
 class SimpleHomeActivity : Activity() {
 
+    private companion object {
+        const val CORNER_DP = 12f
+        const val UNFOCUSED_ALPHA = 0.78f
+    }
+
     private data class Tile(val label: String, val pkg: String?, val action: String? = null)
 
     private val handler = Handler(Looper.getMainLooper())
@@ -71,7 +76,8 @@ class SimpleHomeActivity : Activity() {
             stretchMode = GridView.STRETCH_COLUMN_WIDTH
             selector = GradientDrawable().apply { setColor(Color.TRANSPARENT) }
             clipToPadding = false
-            setPadding((6 * dp).toInt(), (6 * dp).toInt(), (6 * dp).toInt(), (6 * dp).toInt())
+            // Margen para que el mosaico ampliado y su sombra no se corten en los bordes
+            setPadding((12 * dp).toInt(), (12 * dp).toInt(), (12 * dp).toInt(), (12 * dp).toInt())
             setOnItemClickListener { _, _, pos, _ -> open(tiles[pos]) }
             setOnItemLongClickListener { _, _, pos, _ -> toggleFavorite(tiles[pos]); true }
         }
@@ -163,8 +169,9 @@ class SimpleHomeActivity : Activity() {
     private fun bannerOrIcon(pkg: String): Pair<Drawable?, Boolean> = try {
         val pm = packageManager
         val ai = pm.getApplicationInfo(pkg, 0)
-        val launch = pm.getLeanbackLaunchIntentForPackage(pkg)
-        val banner = launch?.let { pm.getActivityBanner(it) } ?: pm.getApplicationBanner(ai)
+        // Nuestra propia app, con el mismo estilo discreto que "Ajustes" (icono y nombre)
+        val banner = if (pkg == packageName) null
+        else pm.getLeanbackLaunchIntentForPackage(pkg)?.let { pm.getActivityBanner(it) } ?: pm.getApplicationBanner(ai)
         if (banner != null) banner to true else pm.getApplicationIcon(ai) to false
     } catch (_: PackageManager.NameNotFoundException) {
         null to false
@@ -181,13 +188,17 @@ class SimpleHomeActivity : Activity() {
             val t = tiles[position]
             val frame = FrameLayout(ctx).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (92 * dp).toInt())
-                background = tileBackground(false)
+                background = tileBackground()
+                // Recorta el banner con las esquinas redondeadas del fondo (si no, asoman sus esquinas cuadradas)
+                outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
+                clipToOutline = true
+                alpha = UNFOCUSED_ALPHA
             }
             val (drawable, isBanner) = t.pkg?.let { bannerOrIcon(it) } ?: (null to false)
             if (drawable != null && isBanner) {
                 frame.addView(ImageView(ctx).apply {
                     setImageDrawable(drawable)
-                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    scaleType = ImageView.ScaleType.CENTER_CROP
                 }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             } else {
                 val col = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
@@ -209,17 +220,28 @@ class SimpleHomeActivity : Activity() {
         }
     }
 
-    /** Borde de selección: va en el foreground para quedar por encima del banner de la app. */
-    private fun focusRing() = GradientDrawable().apply {
-        cornerRadius = 14 * resources.displayMetrics.density
+    /** Línea blanca fina y translúcida por dentro del contorno: se distingue sin llamar la atención. */
+    private fun focusHairline() = GradientDrawable().apply {
+        cornerRadius = CORNER_DP * resources.displayMetrics.density
         setColor(Color.TRANSPARENT)
-        setStroke((4 * resources.displayMetrics.density).toInt(), Color.parseColor("#3DDC84"))
+        setStroke((1.5f * resources.displayMetrics.density).toInt().coerceAtLeast(2), Color.argb(110, 255, 255, 255))
     }
 
-    private fun tileBackground(focused: Boolean) = GradientDrawable().apply {
-        cornerRadius = 14 * resources.displayMetrics.density
+    private fun tileBackground() = GradientDrawable().apply {
+        cornerRadius = CORNER_DP * resources.displayMetrics.density
         setColor(Color.parseColor("#1B2229"))
-        if (focused) setStroke((3 * resources.displayMetrics.density).toInt(), Color.parseColor("#3DDC84"))
+    }
+
+    /** Seleccionado: se eleva un poco (escala y sombra suaves); el resto se atenúa ligeramente. */
+    private fun setFocused(v: View, focused: Boolean) {
+        val dp = resources.displayMetrics.density
+        (v as? FrameLayout)?.foreground = if (focused) focusHairline() else null
+        v.animate()
+            .scaleX(if (focused) 1.07f else 1f).scaleY(if (focused) 1.07f else 1f)
+            .alpha(if (focused) 1f else UNFOCUSED_ALPHA)
+            .translationZ(if (focused) 10 * dp else 0f)
+            .setDuration(140)
+            .start()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -228,8 +250,8 @@ class SimpleHomeActivity : Activity() {
         grid.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
             private var last: View? = null
             override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
-                (last as? FrameLayout)?.let { it.foreground = null; it.scaleX = 1f; it.scaleY = 1f }
-                (v as? FrameLayout)?.let { it.foreground = focusRing(); it.scaleX = 1.06f; it.scaleY = 1.06f }
+                last?.let { setFocused(it, false) }
+                v?.let { setFocused(it, true) }
                 last = v
             }
             override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
