@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Botón: gris discreto; con el foco, blanco (como los mosaicos del inicio) -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true">
-        <shape><solid android:color="#3DDC84" /><corners android:radius="8dp" /></shape>
+        <shape><solid android:color="@color/accent" /><corners android:radius="10dp" /></shape>
     </item>
     <item android:state_pressed="true">
-        <shape><solid android:color="#2FB86C" /><corners android:radius="8dp" /></shape>
+        <shape><solid android:color="#D5D8DC" /><corners android:radius="10dp" /></shape>
     </item>
     <item>
-        <shape><solid android:color="#2A333C" /><corners android:radius="8dp" /></shape>
+        <shape><solid android:color="@color/button" /><corners android:radius="10dp" /></shape>
     </item>
 </selector>

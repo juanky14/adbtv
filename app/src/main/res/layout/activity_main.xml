@@ -4,97 +4,105 @@
     android:layout_height="match_parent"
     android:background="@color/bg"
     android:orientation="horizontal"
-    android:padding="32dp">
+    android:paddingStart="48dp"
+    android:paddingTop="36dp"
+    android:paddingEnd="48dp"
+    android:paddingBottom="32dp">
 
     <!-- Columna izquierda: estado y conexión -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="1"
+        android:layout_weight="1.15"
         android:orientation="vertical">
 
-        <TextView
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textColor="@color/accent"
-            android:textSize="28sp"
-            android:textStyle="bold" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_launcher_legacy" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="@string/app_name"
+                android:textColor="@color/text"
+                android:textSize="26sp" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/txtStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textColor="@color/text"
-            android:textSize="16sp" />
+            android:layout_marginTop="18dp"
+            android:lineSpacingExtra="4dp"
+            android:textColor="@color/muted"
+            android:textSize="15sp" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="22dp"
             android:background="@drawable/card_bg"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="22dp">
 
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Desde un PC de la red:"
-                android:textColor="@color/muted"
-                android:textSize="14sp" />
+                style="@style/CardLabel"
+                android:text="Desde un PC de la red" />
 
             <TextView
                 android:id="@+id/txtAdbCmd"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="monospace"
-                android:textColor="@color/text"
-                android:textIsSelectable="true"
-                android:textSize="20sp" />
+                style="@style/CardValue" />
 
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="Terminal web (móvil / navegador):"
-                android:textColor="@color/muted"
-                android:textSize="14sp" />
+                style="@style/CardLabel"
+                android:layout_marginTop="16dp"
+                android:text="Panel web" />
 
             <TextView
                 android:id="@+id/txtWebUrl"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="monospace"
-                android:textColor="@color/text"
-                android:textSize="20sp" />
+                style="@style/CardValue" />
+
+            <TextView
+                style="@style/CardLabel"
+                android:layout_marginTop="16dp"
+                android:text="PIN" />
 
             <TextView
                 android:id="@+id/txtPin"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:fontFamily="monospace"
-                android:textColor="@color/accent"
-                android:textSize="26sp"
-                android:textStyle="bold" />
+                android:layout_marginTop="2dp"
+                android:fontFamily="sans-serif-light"
+                android:letterSpacing="0.18"
+                android:textColor="@color/text"
+                android:textSize="34sp" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="22dp"
             android:orientation="horizontal">
 
             <Button
                 android:id="@+id/btnConnect"
                 style="@style/TvButton"
-                android:text="Conectar ADB" />
+                android:text="Conectar" />
 
             <Button
                 android:id="@+id/btnRoot"
                 style="@style/TvButton"
-                android:text="Activar con root" />
+                android:text="Root" />
 
             <Button
                 android:id="@+id/btnNewPin"
@@ -104,11 +112,12 @@
             <Button
                 android:id="@+id/btnHome"
                 style="@style/TvButton"
-                android:text="Inicio sencillo" />
+                android:text="Inicio" />
 
             <Button
                 android:id="@+id/btnStop"
                 style="@style/TvButton"
+                android:layout_marginEnd="0dp"
                 android:text="Detener" />
         </LinearLayout>
     </LinearLayout>
@@ -117,32 +126,32 @@
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_marginStart="24dp"
+        android:layout_marginStart="28dp"
         android:layout_weight="1"
         android:background="@drawable/card_bg"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="22dp">
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Registro"
-            android:textColor="@color/muted"
-            android:textSize="14sp" />
+            style="@style/CardLabel"
+            android:text="Registro" />
 
         <ScrollView
             android:id="@+id/scrollLog"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:focusable="false">
+            android:layout_marginTop="8dp"
+            android:focusable="false"
+            android:scrollbars="none">
 
             <TextView
                 android:id="@+id/txtLog"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:fontFamily="monospace"
-                android:textColor="@color/text"
-                android:textSize="13sp" />
+                android:lineSpacingExtra="3dp"
+                android:textColor="#AEB5BD"
+                android:textSize="12sp" />
         </ScrollView>
     </LinearLayout>
 </LinearLayout>

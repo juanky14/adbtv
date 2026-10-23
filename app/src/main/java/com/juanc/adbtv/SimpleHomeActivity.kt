@@ -44,6 +44,14 @@ class SimpleHomeActivity : Activity() {
         const val GRID_PADDING_DP = 12
         const val CORNER_DP = 12f
         const val UNFOCUSED_ALPHA = 0.78f
+
+        /** Mosaicos propios: color de fondo (grises sobrios distintos) e icono de línea. */
+        val SPECIAL_TILES = mapOf(
+            "all" to (Color.parseColor("#2B333D") to R.drawable.ic_tile_apps),
+            "settings" to (Color.parseColor("#33383F") to R.drawable.ic_tile_settings),
+            "stock" to (Color.parseColor("#2C3135") to R.drawable.ic_tile_home),
+            "back" to (Color.parseColor("#262A30") to R.drawable.ic_tile_back),
+        )
     }
 
     private data class Tile(val label: String, val pkg: String?, val action: String? = null) {
@@ -371,9 +379,7 @@ class SimpleHomeActivity : Activity() {
     private fun bannerOrIcon(pkg: String): Pair<Drawable?, Boolean> = try {
         val pm = packageManager
         val ai = pm.getApplicationInfo(pkg, 0)
-        // Nuestra propia app, con el mismo estilo discreto que "Ajustes" (icono y nombre)
-        val banner = if (pkg == packageName) null
-        else pm.getLeanbackLaunchIntentForPackage(pkg)?.let { pm.getActivityBanner(it) } ?: pm.getApplicationBanner(ai)
+        val banner = pm.getLeanbackLaunchIntentForPackage(pkg)?.let { pm.getActivityBanner(it) } ?: pm.getApplicationBanner(ai)
         if (banner != null) banner to true else pm.getApplicationIcon(ai) to false
     } catch (_: PackageManager.NameNotFoundException) {
         null to false
@@ -397,7 +403,20 @@ class SimpleHomeActivity : Activity() {
                 alpha = UNFOCUSED_ALPHA
             }
             val (drawable, isBanner) = t.pkg?.let { bannerOrIcon(it) } ?: (null to false)
-            if (drawable != null && isBanner) {
+            val special = SPECIAL_TILES[t.action]
+            if (special != null) {
+                // Mosaicos propios: fondo a bloque completo + icono de línea grande + nombre
+                frame.background = tileBackground(special.first)
+                val col = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+                col.addView(ImageView(ctx).apply { setImageResource(special.second) },
+                    LinearLayout.LayoutParams((40 * dp).toInt(), (40 * dp).toInt()))
+                col.addView(TextView(ctx).apply {
+                    text = t.label; textSize = 16f; setTextColor(Color.WHITE); gravity = Gravity.CENTER
+                    maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+                    setPadding((10 * dp).toInt(), (8 * dp).toInt(), (10 * dp).toInt(), 0)
+                })
+                frame.addView(col, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            } else if (drawable != null && isBanner) {
                 frame.addView(ImageView(ctx).apply {
                     setImageDrawable(drawable)
                     scaleType = ImageView.ScaleType.CENTER_CROP
@@ -431,9 +450,9 @@ class SimpleHomeActivity : Activity() {
         setStroke(((if (strong) 2.5f else 1.5f) * dp).toInt().coerceAtLeast(2), Color.argb(if (strong) 235 else 110, 255, 255, 255))
     }
 
-    private fun tileBackground() = GradientDrawable().apply {
+    private fun tileBackground(color: Int = Color.parseColor("#1B2229")) = GradientDrawable().apply {
         cornerRadius = CORNER_DP * resources.displayMetrics.density
-        setColor(Color.parseColor("#1B2229"))
+        setColor(color)
     }
 
     /** Seleccionado: se eleva un poco (escala y sombra suaves); el resto se atenúa ligeramente. */

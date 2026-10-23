@@ -1,20 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Banner de ADB TV: televisor de línea + "ADB TV" en trazo limpio, blanco sobre carbón -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="320dp" android:height="180dp"
     android:viewportWidth="320" android:viewportHeight="180">
-    <!-- marco de terminal -->
-    <path android:strokeColor="#3DDC84" android:strokeWidth="6"
-        android:pathData="M40,40 h240 v100 h-240 z" />
-    <!-- prompt > -->
-    <path android:strokeColor="#3DDC84" android:strokeWidth="10"
-        android:strokeLineCap="round" android:strokeLineJoin="round"
-        android:pathData="M70,70 l25,20 l-25,20" />
-    <!-- cursor _ -->
-    <path android:strokeColor="#3DDC84" android:strokeWidth="10"
-        android:strokeLineCap="round"
-        android:pathData="M110,112 h40" />
-    <!-- antena wifi -->
-    <path android:strokeColor="#FFFFFF" android:strokeWidth="6" android:strokeLineCap="round"
-        android:pathData="M200,105 a30,30 0 0,1 50,0 M210,117 a17,17 0 0,1 30,0" />
-    <path android:fillColor="#FFFFFF" android:pathData="M225,128 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
+    <group android:translateX="-16">
+        <!-- televisor -->
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="6"
+            android:strokeLineJoin="round"
+            android:pathData="M68,74 h36 a4,4 0 0 1 4,4 v22 a4,4 0 0 1 -4,4 h-36 a4,4 0 0 1 -4,-4 v-22 a4,4 0 0 1 4,-4 z" />
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="6" android:strokeLineCap="round"
+            android:pathData="M78,111 h16" />
+        <!-- A -->
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="7"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M125,108 L136,72 L147,108 M129.5,96 L142.5,96" />
+        <!-- D -->
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="7"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M157,72 L157,108 L165,108 A18,18 0 0 0 165,72 Z" />
+        <!-- B -->
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="7"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M193,72 L193,108 L205,108 A9,9 0 0 0 205,90 L193,90 M193,72 L203,72 A9,9 0 0 1 203,90" />
+        <!-- T -->
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="7"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M236,72 L258,72 M247,72 L247,108" />
+        <!-- V -->
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="7"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M266,72 L277,108 L288,72" />
+    </group>
 </vector>

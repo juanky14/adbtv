@@ -38,6 +38,9 @@ class MainActivity : Activity() {
         txtPin = findViewById(R.id.txtPin)
         txtLog = findViewById(R.id.txtLog)
         scrollLog = findViewById(R.id.scrollLog)
+        // ScrollView se vuelve enfocable al crearse (ignora el XML): el registro no debe quitar el foco a los botones
+        scrollLog.isFocusable = false
+        scrollLog.descendantFocusability = android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
         btnStop = findViewById(R.id.btnStop)
         btnHome = findViewById(R.id.btnHome)
         btnHome.setOnClickListener {
@@ -84,6 +87,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (currentFocus !is Button) findViewById<View>(R.id.btnConnect).requestFocus()
         AppLog.addListener(logListener)
         renderLog()
         handler.post(ticker)
@@ -106,32 +110,42 @@ class MainActivity : Activity() {
         val connected = AdbBridge.isConnected
         val running = AdbServerService.running
         val pin = Prefs.pin(this)
-        val status = buildString {
-            append(if (running) "● Servicio activo" else "○ Servicio detenido")
-            append("\n")
-            val missing = Permissions.missing(this@MainActivity)
-            append(
-                when {
-                    connected -> "● ADB por red activo y conectado (comandos como usuario shell)"
-                    AdbBridge.blockedBySystem && missing.isEmpty() ->
-                        "● Modo permisos: el sistema no permite ADB local, pero la app tiene todos los permisos"
-                    AdbBridge.blockedBySystem ->
-                        "◐ El sistema no permite ADB local. Para el modo permisos ejecuta una vez desde un PC:\n" +
-                            "adb shell \"${Permissions.setupCommand(this@MainActivity)}\""
-                    portOpen -> "◐ ADB por red activo; acepta el diálogo de depuración y pulsa Conectar"
-                    else -> "○ ADB por red inactivo: actívalo en Opciones de desarrollador, con root, o con 'adb tcpip 5555'"
-                }
-            )
-            if (AdbBridge.blockedBySystem && missing.isNotEmpty()) append("\nFaltan: ${missing.joinToString()}")
+        val missing = Permissions.missing(this)
+        // Cada línea: un punto de color discreto (bien / atención / apagado) y un texto corto
+        val lines = listOf(
+            (if (running) OK else OFF) to (if (running) "Servicio activo" else "Servicio detenido"),
+            when {
+                connected -> OK to "Conectado por ADB"
+                AdbBridge.blockedBySystem && missing.isEmpty() -> OK to "Modo permisos: control completo sin ADB"
+                AdbBridge.blockedBySystem ->
+                    WARN to "Faltan permisos (${missing.joinToString()}). Ejecuta una vez desde un PC:\n" +
+                        "adb shell \"${Permissions.setupCommand(this)}\""
+                portOpen -> WARN to "ADB disponible: acepta el aviso de depuración y pulsa Conectar"
+                else -> OFF to "ADB por red desactivado (Opciones de desarrollador, root o 'adb tcpip 5555')"
+            },
+        )
+        val status = android.text.SpannableStringBuilder()
+        lines.forEachIndexed { i, (color, text) ->
+            if (i > 0) status.append("\n")
+            val start = status.length
+            status.append("●  ")
+            status.setSpan(android.text.style.ForegroundColorSpan(color), start, start + 1, 0)
+            status.append(text)
         }
         handler.post {
             txtStatus.text = status
-            txtAdbCmd.text = if (portOpen) "adb connect $ip:${AdbBridge.ADB_PORT}" else "(ADB por red no disponible)"
-            txtWebUrl.text = if (running) "http://$ip:${Prefs.WEB_PORT}" else "(servidor detenido)"
-            txtPin.text = "PIN: $pin"
+            txtAdbCmd.text = if (portOpen) "adb connect $ip:${AdbBridge.ADB_PORT}" else "No disponible"
+            txtWebUrl.text = if (running) "http://$ip:${Prefs.WEB_PORT}" else "Servidor detenido"
+            txtPin.text = pin
             btnStop.text = if (running) "Detener" else "Iniciar"
-            btnHome.text = if (Prefs.homeOverride(this)) "Inicio sencillo: sí" else "Inicio sencillo: no"
+            btnHome.text = if (Prefs.homeOverride(this)) "Inicio: sí" else "Inicio: no"
         }
+    }
+
+    private companion object {
+        val OK = android.graphics.Color.parseColor("#8FBF94")
+        val WARN = android.graphics.Color.parseColor("#D9B26A")
+        val OFF = android.graphics.Color.parseColor("#5C646E")
     }
 
     private fun renderLog() {

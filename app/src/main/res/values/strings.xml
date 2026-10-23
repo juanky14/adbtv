@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">ADB TV Server</string>
+    <string name="app_name">ADB TV</string>
     <string name="accessibility_description">Permite controlar el televisor a distancia (Inicio, Atrás, flechas, apagar pantalla) desde el panel web y Home Assistant cuando el sistema no permite usar ADB.</string>
 </resources>
