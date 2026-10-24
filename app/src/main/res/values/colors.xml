@@ -1,7 +1,7 @@
 <resources>
     <!-- Paleta neutra y sobria (sin acentos de color) -->
-    <color name="brand_bg">#22272E</color>
-    <color name="icon_bg">#22272E</color>
+    <color name="brand_bg">#111111</color>
+    <color name="icon_bg">#111111</color>
     <color name="bg">#0E1116</color>
     <color name="card">#171B21</color>
     <color name="button">#232830</color>
